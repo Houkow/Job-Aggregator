@@ -38,3 +38,11 @@ CREATE TABLE IF NOT EXISTS offers (
     ai_summary TEXT,
     created_at TIMESTAMP DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS saved_offers (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    offer_id INTEGER REFERENCES offers(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(user_id, offer_id)
+);
