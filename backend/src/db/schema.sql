@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS roles (
     name VARCHAR(50) NOT NULL UNIQUE
 );
 
-INSERT INTO roles (name) VALUES ('user'), ('admin')
+INSERT INTO roles (name) VALUES ('user'), ('admin'), ('recruiter')
 ON CONFLICT DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS users (
@@ -45,4 +45,20 @@ CREATE TABLE IF NOT EXISTS saved_offers (
     offer_id INTEGER REFERENCES offers(id) ON DELETE CASCADE,
     created_at TIMESTAMP DEFAULT NOW(),
     UNIQUE(user_id, offer_id)
+);
+
+CREATE TABLE IF NOT EXISTS recruiter_offers (
+    id SERIAL PRIMARY KEY,
+    recruiter_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    company_name VARCHAR(255),
+    contract_types TEXT[],
+    location VARCHAR(255),
+    salary_min INTEGER,
+    salary_max INTEGER,
+    salary_currency VARCHAR(10),
+    salary_recurrence VARCHAR(50),
+    status VARCHAR(50) DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT NOW()
 );
