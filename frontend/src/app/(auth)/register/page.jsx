@@ -60,8 +60,10 @@ export default function RegisterPage() {
       <div className={styles.card}>
         <div className={styles.logoWrap}>
           <div className={styles.logoIcon}>
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="white">
-              <path d="M12 2L13.09 8.26L19 7L15.45 11.86L21 14L15.45 16.14L19 21L13.09 15.74L12 22L10.91 15.74L5 21L8.55 16.14L3 14L8.55 11.86L5 7L10.91 8.26L12 2Z"/>
+            <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+              <rect x="2" y="7" width="20" height="14" rx="2"/>
+              <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
+              <line x1="12" y1="12" x2="12" y2="12"/>
             </svg>
           </div>
           <h1 className={styles.title}>JobSearch</h1>
