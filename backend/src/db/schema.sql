@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS offers (
     salary_currency VARCHAR(10),
     salary_recurrence VARCHAR(50),
     profession VARCHAR(255),
+    skills TEXT[],
     status VARCHAR(50),
     source VARCHAR(100) DEFAULT 'welovedevs',
     publish_date TIMESTAMP,
