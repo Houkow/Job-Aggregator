@@ -37,9 +37,9 @@ export default function ExplorerPage() {
     setLoading(true)
     try {
       const params = {}
-      if (filters.q) params.q = filters.q
+      if (filters.q) params.search = filters.q
       if (filters.location) params.location = filters.location
-      if (filters.contract !== 'Tous') params.contract = filters.contract
+      if (filters.contract !== 'Tous') params.contract_type = filters.contract
       if (filters.experience !== 'Tous niveaux') params.experience = filters.experience
       if (filters.sort) params.sort = filters.sort
 
@@ -48,9 +48,9 @@ export default function ExplorerPage() {
         savedApi.getAll().catch(() => ({ data: [] })),
       ])
 
-      setOffers(offersData.data || [])
-      setRecommended((offersData.data || []).slice(0, 5))
-      setSavedIds(new Set((savedData.data || []).map((s) => s.offerId)))
+      setOffers(offersData.data.offers || [])
+      setRecommended((offersData.data.offers || []).slice(0, 5))
+      setSavedIds(new Set((savedData.data.saved_offers || []).map((s) => s.id)))
     } catch (err) {
       console.error(err)
     } finally {
