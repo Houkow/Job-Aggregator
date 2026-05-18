@@ -25,6 +25,9 @@ async function request(endpoint, options = {}) {
 }
 
 // Auth
+// POST /api/auth/register
+// POST /api/auth/login
+// POST /api/auth/logout
 export const authApi = {
   login: (email, password) =>
     request('/api/auth/login', {
@@ -36,37 +39,78 @@ export const authApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  me: () => request('/api/auth/me'),
+  logout: () =>
+    request('/api/auth/logout', { method: 'POST' }),
 }
 
 // Offres
+// GET  /api/offers
+// GET  /api/offers/:id
+// GET  /api/offers/saved
+// POST /api/offers/save/:id
 export const offersApi = {
   getAll: (params = {}) => {
-    const query = new URLSearchParams(params).toString()
+    // Mapping des params front → params backend
+    const backendParams = {}
+    if (params.q)          backendParams.search        = params.q
+    if (params.location)   backendParams.location      = params.location
+    if (params.contract && params.contract !== 'Tous')
+                           backendParams.contract_type = params.contract
+    if (params.salary_min) backendParams.salary_min    = params.salary_min
+    if (params.page)       backendParams.page          = params.page
+    if (params.limit)      backendParams.limit         = params.limit
+
+    const query = new URLSearchParams(backendParams).toString()
     return request(`/api/offers${query ? `?${query}` : ''}`)
   },
   getOne: (id) => request(`/api/offers/${id}`),
-  ingest: () => request('/api/offers/ingest', { method: 'POST' }),
+  ingest: () => request('/api/ingest', { method: 'POST' }),
 }
 
 // Offres sauvegardées
+// GET  /api/offers/saved
+// POST /api/offers/save/:id
 export const savedApi = {
-  getAll: () => request('/api/saved'),
+  getAll: () => request('/api/offers/saved'),
   save: (offerId) =>
-    request('/api/saved', {
-      method: 'POST',
-      body: JSON.stringify({ offerId }),
-    }),
+    request(`/api/offers/save/${offerId}`, { method: 'POST' }),
+  // Pas de DELETE ni PATCH dans son backend pour l'instant
   remove: (offerId) =>
-    request(`/api/saved/${offerId}`, { method: 'DELETE' }),
+    request(`/api/offers/save/${offerId}`, { method: 'DELETE' }),
   updateStatus: (offerId, status) =>
-    request(`/api/saved/${offerId}`, {
+    request(`/api/offers/save/${offerId}/status`, {
       method: 'PATCH',
       body: JSON.stringify({ status }),
     }),
 }
 
-// Profil
+// Admin
+// GET    /api/admin/users
+// DELETE /api/admin/users/:id
+// PATCH  /api/admin/users/:id/role
+// GET    /api/admin/offers
+// PATCH  /api/admin/offers/:id/status
+export const adminApi = {
+  getUsers: () => request('/api/admin/users'),
+  deleteUser: (id) =>
+    request(`/api/admin/users/${id}`, { method: 'DELETE' }),
+  updateUser: (id, data) =>
+    request(`/api/admin/users/${id}/role`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  getOffers: () => request('/api/admin/offers'),
+  updateOfferStatus: (id, status) =>
+    request(`/api/admin/offers/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    }),
+  deleteOffer: (id) =>
+    request(`/api/admin/offers/${id}`, { method: 'DELETE' }),
+}
+
+// Profile
+// Pas de route profile dans ses fichiers — à confirmer avec lui
 export const profileApi = {
   get: () => request('/api/profile'),
   update: (data) =>
@@ -83,19 +127,4 @@ export const profileApi = {
       body: form,
     })
   },
-}
-
-// Admin
-export const adminApi = {
-  getUsers: () => request('/api/admin/users'),
-  updateUser: (id, data) =>
-    request(`/api/admin/users/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    }),
-  deleteUser: (id) =>
-    request(`/api/admin/users/${id}`, { method: 'DELETE' }),
-  getOffers: () => request('/api/admin/offers'),
-  deleteOffer: (id) =>
-    request(`/api/admin/offers/${id}`, { method: 'DELETE' }),
 }

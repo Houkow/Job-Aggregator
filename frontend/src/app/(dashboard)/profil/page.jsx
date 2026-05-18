@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { profileApi } from '@/lib/api'
+import { useAuth } from '@/context/AuthContext'
 import Navbar from '@/components/Navbar/Navbar'
 import Chatbot from '@/components/Chatbot/Chatbot'
 import styles from './profil.module.css'
 
 export default function ProfilPage() {
+  const { user } = useAuth()
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
@@ -40,7 +42,7 @@ export default function ProfilPage() {
       setForm({
         firstName: p.firstName || '',
         lastName: p.lastName || '',
-        email: p.email || '',
+        email: p.email || user?.email || '',
         phone: p.phone || '',
         city: p.city || '',
         currentJob: p.currentJob || '',
@@ -52,6 +54,7 @@ export default function ProfilPage() {
       if (p.cvName) setCvName(p.cvName)
     } catch (err) {
       console.error(err)
+      setForm((prev) => ({ ...prev, email: user?.email || '' }))
     } finally {
       setLoading(false)
     }
@@ -101,9 +104,8 @@ export default function ProfilPage() {
     setSuccess(false)
     try {
       await profileApi.update(form)
-      if (cvFile) {
-        await profileApi.uploadCV(cvFile)
-      }
+      if (cvFile) await profileApi.uploadCV(cvFile)
+      updateUser({ avatar: avatar || null })
       setSuccess(true)
       setTimeout(() => setSuccess(false), 3000)
     } catch (err) {

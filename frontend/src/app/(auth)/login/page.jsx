@@ -27,7 +27,12 @@ export default function LoginPage() {
     setLoading(true)
     try {
       const data = await authApi.login(form.email, form.password)
-      login(data.token, data.user)
+      const roleMap = { 1: 'user', 2: 'admin', 3: 'employer' }
+      const user = {
+        email: data.email,
+        role: roleMap[data.role] || 'user',
+      }
+      login(data.token, user)
       router.push('/')
     } catch (err) {
       setError(err.message || 'Email ou mot de passe incorrect.')

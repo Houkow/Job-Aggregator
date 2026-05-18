@@ -47,10 +47,9 @@ export default function ExplorerPage() {
         offersApi.getAll(params),
         savedApi.getAll().catch(() => ({ data: [] })),
       ])
-
-      setOffers(offersData.data.offers || [])
-      setRecommended((offersData.data.offers || []).slice(0, 5))
-      setSavedIds(new Set((savedData.data.saved_offers || []).map((s) => s.id)))
+      setOffers(offersData.offers || [])
+      setRecommended((offersData.offers || []).slice(0, 5))
+      setSavedIds(new Set((savedData.saved_offers || []).map((s) => s.id)))
     } catch (err) {
       console.error(err)
     } finally {

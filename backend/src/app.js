@@ -5,7 +5,10 @@ require('dotenv').config()
 const app = express()
 
 // Middlewares globaux
-app.use(cors())
+app.use(cors({
+  origin: 'http://localhost:3000',
+  credentials: true,
+}))
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
@@ -28,5 +31,8 @@ app.get('/api/health', (req, res) => {
 // Middleware erreurs
 const errorMiddleware = require('./middleware/error.middleware')
 app.use(errorMiddleware)
+
+const profileRoutes = require('./routes/profile.routes')
+app.use('/api/profile', profileRoutes)
 
 module.exports = app

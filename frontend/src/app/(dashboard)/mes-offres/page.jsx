@@ -21,7 +21,7 @@ export default function MesOffresPage() {
     setLoading(true)
     try {
       const data = await savedApi.getAll()
-      setOffers(data.data || [])
+      setOffers(data.saved_offers || [])
     } catch (err) {
       console.error(err)
     } finally {
@@ -32,7 +32,7 @@ export default function MesOffresPage() {
   const handleRemove = async (offerId) => {
     try {
       await savedApi.remove(offerId)
-      setOffers((prev) => prev.filter((o) => o.offerId !== offerId))
+      setOffers((prev) => prev.filter((o) => o.id !== offerId))
     } catch (err) {
       console.error(err)
     }
@@ -42,7 +42,7 @@ export default function MesOffresPage() {
     try {
       await savedApi.updateStatus(offerId, status)
       setOffers((prev) =>
-        prev.map((o) => (o.offerId === offerId ? { ...o, status } : o))
+        prev.map((o) => (o.id === offerId ? { ...o, status } : o))
       )
     } catch (err) {
       console.error(err)
@@ -82,24 +82,24 @@ export default function MesOffresPage() {
         ) : (
           <div className={styles.list}>
             {offers.map((item) => (
-              <div key={item.offerId} className={styles.card}>
+              <div key={item.id} className={styles.card}>
                 <div className={styles.cardMain}>
                   <div className={styles.cardInfo}>
-                    <h2 className={styles.cardTitle}>{item.offer?.title || 'Offre'}</h2>
+                    <h2 className={styles.cardTitle}>{item.title || 'Offre'}</h2>
                     <div className={styles.cardMeta}>
                       <span className={styles.metaItem}>
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <rect x="2" y="7" width="20" height="14" rx="2"/>
                           <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
                         </svg>
-                        {item.offer?.company}
+                        {item.company || '—'}
                       </span>
                       <span className={styles.metaItem}>
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
                           <circle cx="12" cy="10" r="3"/>
                         </svg>
-                        {item.offer?.location}
+                        {item.formatted_places || '—'}
                       </span>
                       <span className={styles.metaItem}>
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -107,8 +107,8 @@ export default function MesOffresPage() {
                           <polyline points="12 6 12 12 16 14"/>
                         </svg>
                         Sauvegardée{' '}
-                        {item.savedAt
-                          ? `il y a ${Math.floor((Date.now() - new Date(item.savedAt)) / 86400000)} jour(s)`
+                        {item.publish_date
+                          ? `il y a ${Math.floor((Date.now() - new Date(item.publish_date)) / 86400000)} jour(s)`
                           : 'récemment'}
                       </span>
                     </div>
@@ -117,7 +117,7 @@ export default function MesOffresPage() {
                       <select
                         className={styles.statusSelect}
                         value={item.status || 'saved'}
-                        onChange={(e) => handleStatusChange(item.offerId, e.target.value)}
+                        onChange={(e) => handleStatusChange(item.id, e.target.value)}
                         style={{ color: STATUS_COLORS[item.status || 'saved'] }}
                         aria-label="Changer le statut de candidature"
                       >
@@ -126,14 +126,18 @@ export default function MesOffresPage() {
                         ))}
                       </select>
 
-                      {item.offer?.salary && (
+                      {item.salary_min && (
                         <span className={`${styles.tag} ${styles.tagSalary}`}>
-                          {item.offer.salary}
+                          {item.salary_min}{item.salary_max ? ` - ${item.salary_max}` : ''}€
                         </span>
                       )}
 
-                      {(item.offer?.skills || []).slice(0, 3).map((skill) => (
-                        <span key={skill} className={styles.tag}>{skill}</span>
+                      {(item.contract_types || []).slice(0, 1).map((c) => (
+                        <span key={c} className={`${styles.tag} ${styles.tagContract}`}>{c}</span>
+                      ))}
+
+                      {(item.tags || []).slice(0, 3).map((tag) => (
+                        <span key={tag} className={styles.tag}>{tag}</span>
                       ))}
                     </div>
                   </div>
@@ -142,7 +146,7 @@ export default function MesOffresPage() {
                 <div className={styles.cardActions}>
                   <button
                     className={styles.actionBtn}
-                    onClick={() => router.push(`/explorer/${item.offerId}`)}
+                    onClick={() => router.push(`/explorer/${item.id}`)}
                     aria-label="Voir l'offre"
                     title="Voir l'offre"
                   >
@@ -154,7 +158,7 @@ export default function MesOffresPage() {
                   </button>
                   <button
                     className={`${styles.actionBtn} ${styles.actionBtnDanger}`}
-                    onClick={() => handleRemove(item.offerId)}
+                    onClick={() => handleRemove(item.id)}
                     aria-label="Supprimer l'offre"
                     title="Supprimer"
                   >

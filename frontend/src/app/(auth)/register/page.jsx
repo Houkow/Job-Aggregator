@@ -24,36 +24,43 @@ export default function RegisterPage() {
     setError('')
   }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    if (!form.name || !form.email || !form.password || !form.confirmPassword) {
-      setError('Veuillez remplir tous les champs.')
-      return
-    }
-    if (form.password !== form.confirmPassword) {
-      setError('Les mots de passe ne correspondent pas.')
-      return
-    }
-    if (form.password.length < 8) {
-      setError('Le mot de passe doit contenir au moins 8 caractères.')
-      return
-    }
-    setLoading(true)
-    try {
-      const data = await authApi.register({
-        name: form.name,
-        email: form.email,
-        password: form.password,
-        role: form.role,
-      })
-      login(data.token, data.user)
-      router.push('/')
-    } catch (err) {
-      setError(err.message || 'Une erreur est survenue.')
-    } finally {
-      setLoading(false)
-    }
+const handleSubmit = async (e) => {
+  e.preventDefault()
+  if (!form.name || !form.email || !form.password || !form.confirmPassword) {
+    setError('Veuillez remplir tous les champs.')
+    return
   }
+  if (form.password !== form.confirmPassword) {
+    setError('Les mots de passe ne correspondent pas.')
+    return
+  }
+  if (form.password.length < 8) {
+    setError('Le mot de passe doit contenir au moins 8 caractères.')
+    return
+  }
+  setLoading(true)
+  try {
+    // 1. Register
+    await authApi.register({
+      email: form.email,
+      password: form.password,
+      role: form.role,
+    })
+    // 2. Login automatique après register
+    const loginData = await authApi.login(form.email, form.password)
+    const roleMap = { 1: 'user', 2: 'admin', 3: 'employer' }
+    const user = {
+      email: loginData.email,           // ← vient du backend
+      role: roleMap[loginData.role] || 'user', // ← vient du backend
+    }
+    login(loginData.token, user)
+    router.push('/')
+  } catch (err) {
+    setError(err.message || 'Une erreur est survenue.')
+  } finally {
+    setLoading(false)  // ← manquait
+  }
+}
 
   return (
     <main className={styles.main}>

@@ -6,8 +6,8 @@ import styles from './JobCard.module.css'
 export default function JobCard({ offer, saved, onSave }) {
   const router = useRouter()
 
-  const daysAgo = offer.createdAt
-    ? Math.floor((Date.now() - new Date(offer.createdAt)) / 86400000)
+  const daysAgo = offer.publish_date
+    ? Math.floor((Date.now() - new Date(offer.publish_date)) / 86400000)
     : null
 
   const handleSave = (e) => {
@@ -38,6 +38,7 @@ export default function JobCard({ offer, saved, onSave }) {
 
         <div className={styles.info}>
           <h3 className={styles.title}>{offer.title}</h3>
+
           <div className={styles.meta}>
             <span className={styles.metaItem}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -46,13 +47,15 @@ export default function JobCard({ offer, saved, onSave }) {
               </svg>
               {offer.company}
             </span>
+
             <span className={styles.metaItem}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
                 <circle cx="12" cy="10" r="3"/>
               </svg>
-              {offer.location || 'Non précisé'}
+              {offer.formatted_places || 'Non précisé'}
             </span>
+
             {daysAgo !== null && (
               <span className={styles.metaItem}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -65,24 +68,21 @@ export default function JobCard({ offer, saved, onSave }) {
           </div>
 
           <div className={styles.tags}>
-            {offer.contractType && (
-              <span className={`${styles.tag} ${styles.tagContract}`}>
-                {offer.contractType}
+            {(offer.contract_types || []).slice(0, 1).map((c) => (
+              <span key={c} className={`${styles.tag} ${styles.tagContract}`}>
+                {c}
               </span>
-            )}
-            {offer.salary && (
+            ))}
+
+            {offer.salary_min && (
               <span className={`${styles.tag} ${styles.tagSalary}`}>
-                {offer.salary}
+                {offer.salary_min}{offer.salary_max ? ` - ${offer.salary_max}` : ''}€
               </span>
             )}
-            {offer.experience && (
-              <span className={`${styles.tag} ${styles.tagExp}`}>
-                {offer.experience}
-              </span>
-            )}
-            {(offer.skills || []).slice(0, 3).map((skill) => (
-              <span key={skill} className={styles.tag}>
-                {skill}
+
+            {(offer.tags || []).slice(0, 3).map((tag) => (
+              <span key={tag} className={styles.tag}>
+                {tag}
               </span>
             ))}
           </div>

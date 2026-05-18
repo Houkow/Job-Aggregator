@@ -40,7 +40,7 @@ export default function AdminPage() {
     setLoadingUsers(true)
     try {
       const data = await adminApi.getUsers()
-      setUsers(data.data || [])
+      setUsers(data.users || [])
     } catch (err) {
       console.error(err)
     } finally {
@@ -52,7 +52,7 @@ export default function AdminPage() {
     setLoadingOffers(true)
     try {
       const data = await adminApi.getOffers()
-      setOffers(data.data || [])
+      setOffers(data.offers || [])
     } catch (err) {
       console.error(err)
     } finally {

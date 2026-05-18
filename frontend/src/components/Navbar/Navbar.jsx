@@ -18,6 +18,7 @@ export default function Navbar() {
     { label: 'Explorer', href: '/explorer' },
     { label: 'Mes offres', href: '/mes-offres' },
     { label: 'Mon profil', href: '/profil' },
+    ...(user?.role === 'admin' ? [{ label: 'Admin', href: '/admin' }] : []),
   ]
 
   useEffect(() => {
@@ -71,17 +72,20 @@ export default function Navbar() {
             aria-expanded={menuOpen}
           >
             {user?.avatar ? (
-              <img src={user.avatar} alt={user.name} className={styles.avatarImg} />
+              <img src={user.avatar} alt={user.email} className={styles.avatarImg} />
             ) : (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                <circle cx="12" cy="7" r="4"/>
-              </svg>
+              <span className={styles.avatarInitial}>
+                {user?.email?.[0]?.toUpperCase() || '?'}
+              </span>
             )}
           </button>
-
           {menuOpen && (
             <div className={styles.dropdown} role="menu">
+                <div className={styles.dropdownUser}>
+                  <p className={styles.dropdownEmail}>{user?.email}</p>
+                  <p className={styles.dropdownRole}>{user?.role === 'admin' ? 'Administrateur' : user?.role === 'employer' ? 'Employeur' : 'Candidat'}</p>
+                </div>
+                <div className={styles.dropdownDivider} />
               <button
                 className={styles.dropdownItem}
                 onClick={() => { toggleTheme(); setMenuOpen(false) }}
