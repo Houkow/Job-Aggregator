@@ -60,7 +60,7 @@ export const offersApi = {
     if (params.page)       backendParams.page          = params.page
     if (params.limit)      backendParams.limit         = params.limit
 
-    const query = new URLSearchParams(backendParams).toString()
+    const query = new URLSearchParams(params).toString()
     return request(`/api/offers${query ? `?${query}` : ''}`)
   },
   getOne: (id) => request(`/api/offers/${id}`),

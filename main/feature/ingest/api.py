@@ -1,55 +1,41 @@
 import requests
 import time
 from clean import clean_job
+from save import save_jobs
 
-API_KEY = "baf44dad-14d5-4c26-8ccf-78afdbcb80a4"
+API_KEY = "953af11b-5a49-4f82-aeeb-6641d73d6129"
 BASE_URL = "https://epi-api.welovedevs.com/v1"
-PAGE_SIZE = 100  # max autorisé par l'API
-
+PAGE_SIZE = 100
 
 def get_all_jobs():
     headers = {"X-API-Key": API_KEY}
     all_jobs = []
     page = 0
-
     while True:
         params = {"page": page, "size": PAGE_SIZE}
         response = requests.get(BASE_URL, headers=headers, params=params, timeout=10)
-
         if response.status_code == 429:
             print("Rate limit atteint, on attend 2s...")
             time.sleep(2)
-            continue  # on retente la même page
-
+            continue
         if response.status_code != 200:
             print(f"Erreur {response.status_code} : {response.text}")
             break
-
         data = response.json()
         total_count = data.get("totalCount", 0)
         jobs = data.get("values", [])
-
         if not jobs:
             break
-
         all_jobs.extend(jobs)
         print(f"Page {page} → {len(all_jobs)}/{total_count} offres récupérées")
-
-        # Si on a tout récupéré, on sort
         if len(all_jobs) >= total_count:
             break
-
         page += 1
-        time.sleep(1)  # respect du rate limit : 1 call/seconde
-
+        time.sleep(1)
     return all_jobs
-
 
 if __name__ == "__main__":
     jobs = get_all_jobs()
     print(f"\nTotal offres récupérées : {len(jobs)}")
-
     cleaned_jobs = [clean_job(job) for job in jobs]
-
-    for job in cleaned_jobs[:1]:
-        print(job)
+    save_jobs(cleaned_jobs)

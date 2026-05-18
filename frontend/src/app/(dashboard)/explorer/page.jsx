@@ -24,6 +24,8 @@ export default function ExplorerPage() {
   const [loading, setLoading] = useState(true)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [carouselIndex, setCarouselIndex] = useState(0)
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
 
   const [filters, setFilters] = useState({
     q: searchParams.get('q') || '',
@@ -37,25 +39,33 @@ export default function ExplorerPage() {
     setLoading(true)
     try {
       const params = {}
-      if (filters.q) params.search = filters.q
+      if (filters.q) params.search = filters.q        // ← search pas q
       if (filters.location) params.location = filters.location
-      if (filters.contract !== 'Tous') params.contract_type = filters.contract
-      if (filters.experience !== 'Tous niveaux') params.experience = filters.experience
+      if (filters.contract !== 'Tous') params.contract_type = filters.contract  // ← contract_type
       if (filters.sort) params.sort = filters.sort
+      params.page = page
+      params.limit = 20
 
-      const [offersData, savedData] = await Promise.all([
+      const [offersData, savedData] = await Promise.allSettled([
         offersApi.getAll(params),
-        savedApi.getAll().catch(() => ({ data: [] })),
+        savedApi.getAll(),
       ])
-      setOffers(offersData.offers || [])
-      setRecommended((offersData.offers || []).slice(0, 5))
-      setSavedIds(new Set((savedData.saved_offers || []).map((s) => s.id)))
+
+      if (offersData.status === 'fulfilled') {
+        setOffers(offersData.value.offers || [])
+        setRecommended((offersData.value.offers || []).slice(0, 5))
+        setTotal(offersData.value.total || 0)  // ← récupère le total
+      }
+
+      if (savedData.status === 'fulfilled') {
+        setSavedIds(new Set((savedData.value.saved_offers || []).map((s) => s.id)))
+      }
     } catch (err) {
       console.error(err)
     } finally {
       setLoading(false)
     }
-  }, [filters])
+  }, [filters, page])
 
   useEffect(() => {
     fetchOffers()
@@ -277,11 +287,33 @@ export default function ExplorerPage() {
                   onSave={() => handleSave(offer.id)}
                 />
               ))}
-            </div>
+            </div>      
           )}
         </section>
       </div>
 
+      {/* Pagination */}
+      {total > 20 && (
+        <div className={styles.pagination}>
+          <button
+            className={styles.pageBtn}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1}
+          >
+            ← Précédent
+          </button>
+          <span className={styles.pageInfo}>
+            Page {page} / {Math.ceil(total / 20)}
+          </span>
+          <button
+            className={styles.pageBtn}
+            onClick={() => setPage((p) => p + 1)}
+            disabled={page >= Math.ceil(total / 20)}
+          >
+            Suivant →
+          </button>
+        </div>
+      )}
       <Chatbot />
     </main>
   )

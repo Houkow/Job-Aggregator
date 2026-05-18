@@ -1,1 +1,4 @@
 .venv/
+
+main/feature/ingest/venv/
+main/feature/ingest/__pyache__/
