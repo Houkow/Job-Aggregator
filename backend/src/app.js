@@ -17,11 +17,13 @@ const authRoutes = require('./routes/auth.routes')
 const offersRoutes = require('./routes/offers.routes')
 const adminRoutes = require('./routes/admin.routes')
 const ingestRoutes = require('./routes/ingest.routes')
+const chatbotRoutes = require('./routes/chatbot.routes')
 
 app.use('/api/auth', authRoutes)
 app.use('/api/offers', offersRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/ingest', ingestRoutes)
+app.use('/api/chatbot', chatbotRoutes)
 
 // Route test
 app.get('/api/health', (req, res) => {
