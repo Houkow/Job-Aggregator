@@ -128,3 +128,15 @@ export const profileApi = {
     })
   },
 }
+
+// Recruiter
+export const recruiterApi = {
+  create: (data) =>
+    request('/api/recruiter', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  getMy: () => request('/api/recruiter/my'),
+  delete: (id) =>
+    request(`/api/recruiter/${id}`, { method: 'DELETE' }),
+}

@@ -16,9 +16,18 @@ export default function Navbar() {
 
   const navLinks = [
     { label: 'Explorer', href: '/explorer' },
-    { label: 'Mes offres', href: '/mes-offres' },
-    { label: 'Mon profil', href: '/profil' },
-    ...(user?.role === 'admin' ? [{ label: 'Admin', href: '/admin' }] : []),
+    ...(user?.role === 'user' || user?.role === 'admin'
+      ? [
+          { label: 'Mes offres', href: '/mes-offres' },
+          { label: 'Mon profil', href: '/profil' },
+        ]
+      : []),
+    ...(user?.role === 'employer' || user?.role === 'admin'
+      ? [{ label: 'Poster une offre', href: '/poster-offre' }]
+      : []),
+    ...(user?.role === 'admin'
+      ? [{ label: 'Admin', href: '/admin' }]
+      : []),
   ]
 
   useEffect(() => {
@@ -79,13 +88,21 @@ export default function Navbar() {
               </span>
             )}
           </button>
+
           {menuOpen && (
             <div className={styles.dropdown} role="menu">
-                <div className={styles.dropdownUser}>
-                  <p className={styles.dropdownEmail}>{user?.email}</p>
-                  <p className={styles.dropdownRole}>{user?.role === 'admin' ? 'Administrateur' : user?.role === 'employer' ? 'Employeur' : 'Candidat'}</p>
-                </div>
-                <div className={styles.dropdownDivider} />
+              <div className={styles.dropdownUser}>
+                <p className={styles.dropdownEmail}>{user?.email}</p>
+                <p className={styles.dropdownRole}>
+                  {user?.role === 'admin'
+                    ? 'Administrateur'
+                    : user?.role === 'employer'
+                    ? 'Employeur'
+                    : 'Candidat'}
+                </p>
+              </div>
+              <div className={styles.dropdownDivider} />
+
               <button
                 className={styles.dropdownItem}
                 onClick={() => { toggleTheme(); setMenuOpen(false) }}
@@ -100,17 +117,33 @@ export default function Navbar() {
                 Mode {theme === 'light' ? 'sombre' : 'clair'}
               </button>
 
-              <button
-                className={styles.dropdownItem}
-                onClick={() => { router.push('/profil'); setMenuOpen(false) }}
-                role="menuitem"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="3"/>
-                  <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
-                </svg>
-                Paramètres
-              </button>
+              {(user?.role === 'user' || user?.role === 'admin') && (
+                <button
+                  className={styles.dropdownItem}
+                  onClick={() => { router.push('/profil'); setMenuOpen(false) }}
+                  role="menuitem"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
+                  </svg>
+                  Paramètres
+                </button>
+              )}
+
+              {(user?.role === 'employer' || user?.role === 'admin') && (
+                <button
+                  className={styles.dropdownItem}
+                  onClick={() => { router.push('/poster-offre'); setMenuOpen(false) }}
+                  role="menuitem"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                  Poster une offre
+                </button>
+              )}
 
               {user?.role === 'admin' && (
                 <button

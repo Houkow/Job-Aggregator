@@ -9,7 +9,8 @@ import styles from './admin.module.css'
 
 const TABS = [
   { id: 'users', label: 'Utilisateurs' },
-  { id: 'offers', label: 'Offres' },
+  { id: 'offers', label: 'Offres WeLoveDevs' },
+  { id: 'moderation', label: 'Modération' },
   { id: 'ingest', label: 'Ingestion' },
 ]
 
@@ -19,8 +20,10 @@ export default function AdminPage() {
   const [tab, setTab] = useState('users')
   const [users, setUsers] = useState([])
   const [offers, setOffers] = useState([])
+  const [recruiterOffers, setRecruiterOffers] = useState([])
   const [loadingUsers, setLoadingUsers] = useState(false)
   const [loadingOffers, setLoadingOffers] = useState(false)
+  const [loadingRecruiter, setLoadingRecruiter] = useState(false)
   const [ingesting, setIngesting] = useState(false)
   const [ingestResult, setIngestResult] = useState(null)
   const [search, setSearch] = useState('')
@@ -34,6 +37,7 @@ export default function AdminPage() {
   useEffect(() => {
     if (tab === 'users') fetchUsers()
     if (tab === 'offers') fetchOffers()
+    if (tab === 'moderation') fetchRecruiterOffers()
   }, [tab])
 
   const fetchUsers = async () => {
@@ -60,6 +64,18 @@ export default function AdminPage() {
     }
   }
 
+  const fetchRecruiterOffers = async () => {
+    setLoadingRecruiter(true)
+    try {
+      const data = await adminApi.getOffers()
+      setRecruiterOffers(data.offers || [])
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoadingRecruiter(false)
+    }
+  }
+
   const handleDeleteUser = async (id) => {
     if (!confirm('Supprimer cet utilisateur ?')) return
     try {
@@ -70,10 +86,12 @@ export default function AdminPage() {
     }
   }
 
-  const handleRoleChange = async (id, role) => {
+  const handleRoleChange = async (id, role_id) => {
     try {
-      await adminApi.updateUser(id, { role })
-      setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, role } : u)))
+      await adminApi.updateUser(id, { role_id: parseInt(role_id) })
+      setUsers((prev) =>
+        prev.map((u) => (u.id === id ? { ...u, role_id: parseInt(role_id) } : u))
+      )
     } catch (err) {
       console.error(err)
     }
@@ -84,6 +102,18 @@ export default function AdminPage() {
     try {
       await adminApi.deleteOffer(id)
       setOffers((prev) => prev.filter((o) => o.id !== id))
+      setRecruiterOffers((prev) => prev.filter((o) => o.id !== id))
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const handleUpdateOfferStatus = async (id, status) => {
+    try {
+      await adminApi.updateOfferStatus(id, status)
+      setRecruiterOffers((prev) =>
+        prev.map((o) => (o.id === id ? { ...o, status } : o))
+      )
     } catch (err) {
       console.error(err)
     }
@@ -105,16 +135,20 @@ export default function AdminPage() {
     }
   }
 
-  const filteredUsers = users.filter(
-    (u) =>
-      u.name?.toLowerCase().includes(search.toLowerCase()) ||
-      u.email?.toLowerCase().includes(search.toLowerCase())
+  const filteredUsers = users.filter((u) =>
+    u.email?.toLowerCase().includes(search.toLowerCase())
   )
 
   const filteredOffers = offers.filter(
     (o) =>
       o.title?.toLowerCase().includes(search.toLowerCase()) ||
-      o.company?.toLowerCase().includes(search.toLowerCase())
+      o.company_name?.toLowerCase().includes(search.toLowerCase())
+  )
+
+  const filteredRecruiterOffers = recruiterOffers.filter(
+    (o) =>
+      o.title?.toLowerCase().includes(search.toLowerCase()) ||
+      o.company_name?.toLowerCase().includes(search.toLowerCase())
   )
 
   return (
@@ -127,7 +161,7 @@ export default function AdminPage() {
           <p className={styles.sub}>Gérez les utilisateurs, les offres et les imports</p>
         </div>
 
-        {/* Stats rapides */}
+        {/* Stats */}
         <div className={styles.stats}>
           <div className={styles.statCard}>
             <div className={styles.statIcon} style={{ background: '#eff6ff' }}>
@@ -143,6 +177,7 @@ export default function AdminPage() {
               <p className={styles.statLabel}>Utilisateurs</p>
             </div>
           </div>
+
           <div className={styles.statCard}>
             <div className={styles.statIcon} style={{ background: '#f0fdf4' }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2">
@@ -152,9 +187,10 @@ export default function AdminPage() {
             </div>
             <div>
               <p className={styles.statValue}>{offers.length}</p>
-              <p className={styles.statLabel}>Offres</p>
+              <p className={styles.statLabel}>Offres WeLoveDevs</p>
             </div>
           </div>
+
           <div className={styles.statCard}>
             <div className={styles.statIcon} style={{ background: '#faf5ff' }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9333ea" strokeWidth="2">
@@ -164,11 +200,12 @@ export default function AdminPage() {
             </div>
             <div>
               <p className={styles.statValue}>
-                {users.filter((u) => u.role === 'admin').length}
+                {users.filter((u) => u.role_id === 2).length}
               </p>
               <p className={styles.statLabel}>Admins</p>
             </div>
           </div>
+
           <div className={styles.statCard}>
             <div className={styles.statIcon} style={{ background: '#fff7ed' }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ea580c" strokeWidth="2">
@@ -178,12 +215,9 @@ export default function AdminPage() {
             </div>
             <div>
               <p className={styles.statValue}>
-                {offers.filter((o) => {
-                  const d = new Date(o.createdAt)
-                  return Date.now() - d < 86400000 * 7
-                }).length}
+                {recruiterOffers.filter((o) => o.status === 'pending').length}
               </p>
-              <p className={styles.statLabel}>Offres cette semaine</p>
+              <p className={styles.statLabel}>En attente</p>
             </div>
           </div>
         </div>
@@ -199,6 +233,11 @@ export default function AdminPage() {
               aria-selected={tab === t.id}
             >
               {t.label}
+              {t.id === 'moderation' && recruiterOffers.filter((o) => o.status === 'pending').length > 0 && (
+                <span className={styles.tabBadge}>
+                  {recruiterOffers.filter((o) => o.status === 'pending').length}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -213,7 +252,9 @@ export default function AdminPage() {
             <input
               className={styles.searchInput}
               type="text"
-              placeholder={tab === 'users' ? 'Rechercher un utilisateur...' : 'Rechercher une offre...'}
+              placeholder={
+                tab === 'users' ? 'Rechercher un utilisateur...' : 'Rechercher une offre...'
+              }
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               aria-label="Rechercher"
@@ -245,37 +286,34 @@ export default function AdminPage() {
                       <td>
                         <div className={styles.userCell}>
                           <div className={styles.userAvatar}>
-                            {u.avatar
-                              ? <img src={u.avatar} alt={u.name} />
-                              : u.name?.[0]?.toUpperCase() || '?'
-                            }
+                            {u.email?.[0]?.toUpperCase() || '?'}
                           </div>
-                          <span>{u.name || '—'}</span>
+                          <span>{u.email}</span>
                         </div>
                       </td>
                       <td className={styles.emailCell}>{u.email}</td>
                       <td>
                         <select
                           className={styles.roleSelect}
-                          value={u.role}
+                          value={u.role_id}
                           onChange={(e) => handleRoleChange(u.id, e.target.value)}
-                          aria-label={`Rôle de ${u.name}`}
+                          aria-label={`Rôle de ${u.email}`}
                         >
-                          <option value="user">Candidat</option>
-                          <option value="employer">Employeur</option>
-                          <option value="admin">Admin</option>
+                          <option value={1}>Candidat</option>
+                          <option value={3}>Employeur</option>
+                          <option value={2}>Admin</option>
                         </select>
                       </td>
                       <td className={styles.dateCell}>
-                        {u.createdAt
-                          ? new Date(u.createdAt).toLocaleDateString('fr-FR')
+                        {u.created_at
+                          ? new Date(u.created_at).toLocaleDateString('fr-FR')
                           : '—'}
                       </td>
                       <td>
                         <button
                           className={styles.deleteBtn}
                           onClick={() => handleDeleteUser(u.id)}
-                          aria-label={`Supprimer ${u.name}`}
+                          aria-label={`Supprimer ${u.email}`}
                         >
                           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <polyline points="3 6 5 6 21 6"/>
@@ -293,7 +331,7 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* Tab: Offers */}
+        {/* Tab: Offers WeLoveDevs */}
         {tab === 'offers' && (
           <div className={styles.tableWrap}>
             {loadingOffers ? (
@@ -316,16 +354,18 @@ export default function AdminPage() {
                   {filteredOffers.map((o) => (
                     <tr key={o.id}>
                       <td className={styles.titleCell}>{o.title}</td>
-                      <td>{o.company}</td>
-                      <td>{o.location || '—'}</td>
+                      <td>{o.company_name || '—'}</td>
+                      <td>{o.formatted_places || '—'}</td>
                       <td>
-                        {o.contractType && (
-                          <span className={styles.contractBadge}>{o.contractType}</span>
+                        {(o.contract_types || []).length > 0 && (
+                          <span className={styles.contractBadge}>
+                            {o.contract_types[0]}
+                          </span>
                         )}
                       </td>
                       <td className={styles.dateCell}>
-                        {o.createdAt
-                          ? new Date(o.createdAt).toLocaleDateString('fr-FR')
+                        {o.created_at
+                          ? new Date(o.created_at).toLocaleDateString('fr-FR')
                           : '—'}
                       </td>
                       <td>
@@ -341,6 +381,101 @@ export default function AdminPage() {
                             <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
                           </svg>
                         </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
+
+        {/* Tab: Modération */}
+        {tab === 'moderation' && (
+          <div className={styles.tableWrap}>
+            {loadingRecruiter ? (
+              <div className={styles.loadingList}>
+                {[...Array(5)].map((_, i) => <div key={i} className={styles.skeleton} />)}
+              </div>
+            ) : filteredRecruiterOffers.length === 0 ? (
+              <div className={styles.emptyModeration}>
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                <p>Aucune offre à modérer</p>
+              </div>
+            ) : (
+              <table className={styles.table} role="table">
+                <thead>
+                  <tr>
+                    <th>Titre</th>
+                    <th>Entreprise</th>
+                    <th>Localisation</th>
+                    <th>Statut</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRecruiterOffers.map((o) => (
+                    <tr key={o.id}>
+                      <td className={styles.titleCell}>{o.title}</td>
+                      <td>{o.company_name || '—'}</td>
+                      <td>{o.location || '—'}</td>
+                      <td>
+                        <span className={`${styles.contractBadge} ${
+                          o.status === 'approved' ? styles.statusApproved :
+                          o.status === 'rejected' ? styles.statusRejected :
+                          styles.statusPending
+                        }`}>
+                          {o.status === 'approved' ? 'Approuvée' :
+                           o.status === 'rejected' ? 'Rejetée' : 'En attente'}
+                        </span>
+                      </td>
+                      <td className={styles.dateCell}>
+                        {o.created_at
+                          ? new Date(o.created_at).toLocaleDateString('fr-FR')
+                          : '—'}
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <button
+                            className={styles.approveBtn}
+                            onClick={() => handleUpdateOfferStatus(o.id, 'approved')}
+                            disabled={o.status === 'approved'}
+                            aria-label="Approuver"
+                            title="Approuver"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                          </button>
+                          <button
+                            className={styles.rejectBtn}
+                            onClick={() => handleUpdateOfferStatus(o.id, 'rejected')}
+                            disabled={o.status === 'rejected'}
+                            aria-label="Rejeter"
+                            title="Rejeter"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <line x1="18" y1="6" x2="6" y2="18"/>
+                              <line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                          </button>
+                          <button
+                            className={styles.deleteBtn}
+                            onClick={() => handleDeleteOffer(o.id)}
+                            aria-label="Supprimer"
+                            title="Supprimer"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <polyline points="3 6 5 6 21 6"/>
+                              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                              <path d="M10 11v6M14 11v6"/>
+                              <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                            </svg>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import styles from './Chatbot.module.css'
 
@@ -11,20 +12,28 @@ const SUGGESTIONS = [
 ]
 
 export default function Chatbot() {
-  const [open, setOpen] = useState(false)
+  const router = useRouter()
+  const { token } = useAuth()
+
+  const [open, setOpen]       = useState(false)
+  const [input, setInput]     = useState('')
+  const [loading, setLoading] = useState(false)
+
+  // history envoyée à l'API : [{role, content}]
+  const [history, setHistory] = useState([])
+
+  // messages affichés dans le chat : [{id, role, text, time, offers}]
   const [messages, setMessages] = useState([
     {
       id: 1,
       role: 'assistant',
-      text: 'Bonjour ! Je suis votre assistant virtuel. Comment puis-je vous aider dans votre recherche d\'emploi ?',
+      text: "Bonjour ! Je suis Jobby, votre assistant de recherche d'emploi. Dites-moi quel type de poste vous recherchez !",
       time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
     },
   ])
-  const [input, setInput] = useState('')
-  const [loading, setLoading] = useState(false)
+
   const bottomRef = useRef(null)
-  const inputRef = useRef(null)
-  const { token } = useAuth()
+  const inputRef  = useRef(null)
 
   useEffect(() => {
     if (open) {
@@ -34,19 +43,22 @@ export default function Chatbot() {
   }, [open, messages])
 
   const sendMessage = async (text) => {
-    const content = text || input.trim()
+    const content = (text || input).trim()
     if (!content || loading) return
 
-    const userMsg = {
-      id: Date.now(),
-      role: 'user',
-      text: content,
-      time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
-    }
+    const now = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 
+    // Ajout du message utilisateur à l'affichage
+    const userMsg = { id: Date.now(), role: 'user', text: content, time: now }
     setMessages((prev) => [...prev, userMsg])
     setInput('')
     setLoading(true)
+
+    // Historique pour l'API (format OpenAI)
+    const updatedHistory = [
+      ...history,
+      { role: 'user', content },
+    ]
 
     try {
       const res = await fetch(
@@ -57,30 +69,54 @@ export default function Chatbot() {
             'Content-Type': 'application/json',
             ...(token && { Authorization: `Bearer ${token}` }),
           },
-          body: JSON.stringify({ message: content }),
+          body: JSON.stringify({
+            message: content,
+            history,               // historique avant ce message
+          }),
         }
       )
 
       const data = await res.json()
 
+      const botTime = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+
+      // Ajout de la réponse du bot à l'affichage
       setMessages((prev) => [
         ...prev,
         {
           id: Date.now() + 1,
           role: 'assistant',
-          text: data.reply || 'Désolé, je n\'ai pas pu traiter votre demande.',
-          time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+          text: data.reply || "Désolé, je n'ai pas pu traiter votre demande.",
+          time: botTime,
           offers: data.offers || [],
+          redirect: data.redirect || false,
+          url: data.url || null,
         },
       ])
-    } catch (err) {
+
+      // Mise à jour de l'historique avec les deux nouveaux messages
+      setHistory([
+        ...updatedHistory,
+        { role: 'assistant', content: data.reply || '' },
+      ])
+
+      // Redirection si le chatbot a trouvé assez d'infos
+      if (data.redirect && data.url) {
+        setTimeout(() => {
+          setOpen(false)
+          router.push(data.url)
+        }, 1800)
+      }
+
+    } catch {
+      const errTime = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
       setMessages((prev) => [
         ...prev,
         {
           id: Date.now() + 1,
           role: 'assistant',
           text: 'Une erreur est survenue. Veuillez réessayer.',
-          time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+          time: errTime,
         },
       ])
     } finally {
@@ -121,7 +157,7 @@ export default function Chatbot() {
         <div
           className={styles.window}
           role="dialog"
-          aria-label="Assistant JobSearch"
+          aria-label="Assistant Jobby"
           aria-modal="false"
         >
           {/* Header */}
@@ -133,7 +169,7 @@ export default function Chatbot() {
                 </svg>
               </div>
               <div>
-                <p className={styles.botName}>Assistant JobSearch</p>
+                <p className={styles.botName}>Jobby</p>
                 <p className={styles.botStatus}>
                   <span className={styles.statusDot} />
                   En ligne
@@ -172,11 +208,18 @@ export default function Chatbot() {
                     {msg.text}
                   </div>
 
-                  {/* Offres suggérées dans la réponse */}
+                  {/* Offres suggérées */}
                   {msg.offers && msg.offers.length > 0 && (
                     <div className={styles.offerSuggestions}>
                       {msg.offers.map((offer) => (
-                        <div key={offer.id} className={styles.offerChip}>
+                        <div
+                          key={offer.id}
+                          className={styles.offerChip}
+                          onClick={() => router.push(`/explorer/${offer.id}`)}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => e.key === 'Enter' && router.push(`/explorer/${offer.id}`)}
+                        >
                           <div className={styles.offerChipInfo}>
                             <span className={styles.offerChipTitle}>{offer.title}</span>
                             <span className={styles.offerChipCompany}>{offer.company}</span>
@@ -186,6 +229,17 @@ export default function Chatbot() {
                           )}
                         </div>
                       ))}
+                    </div>
+                  )}
+
+                  {/* Indicateur de redirection */}
+                  {msg.redirect && msg.url && (
+                    <div className={styles.redirectHint}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="5 12 12 5 19 12"/>
+                        <polyline points="12 19 12 5"/>
+                      </svg>
+                      Redirection en cours...
                     </div>
                   )}
 
@@ -211,7 +265,7 @@ export default function Chatbot() {
             <div ref={bottomRef} />
           </div>
 
-          {/* Suggestions */}
+          {/* Suggestions initiales */}
           {messages.length === 1 && (
             <div className={styles.suggestions}>
               {SUGGESTIONS.map((s) => (
@@ -232,7 +286,7 @@ export default function Chatbot() {
               ref={inputRef}
               className={styles.input}
               type="text"
-              placeholder="Posez votre question..."
+              placeholder="Décrivez votre recherche..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}

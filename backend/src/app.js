@@ -35,4 +35,7 @@ app.use(errorMiddleware)
 const profileRoutes = require('./routes/profile.routes')
 app.use('/api/profile', profileRoutes)
 
+const recruiterRoutes = require('./routes/recruiter.routes')
+app.use('/api/recruiter', recruiterRoutes)
+
 module.exports = app
