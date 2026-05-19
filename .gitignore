@@ -1,4 +1,8 @@
 .venv/
 
 main/feature/ingest/venv/
-main/feature/ingest/__pyache__/
+main/feature/ingest/__pycache__/
+
+backend/node_modules/
+backend/.env
+*.log
