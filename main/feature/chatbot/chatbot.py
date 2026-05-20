@@ -3,7 +3,7 @@ import json
 
 client = OpenAI(
     api_key="lm-studio",
-    base_url="http://127.0.0.1:1234"
+    base_url="http://host.docker.internal:1234"
 )
 
 MODEL = "lama3-8b-hikikomori-v0.3"
