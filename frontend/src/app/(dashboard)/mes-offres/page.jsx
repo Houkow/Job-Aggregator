@@ -21,6 +21,7 @@ export default function MesOffresPage() {
     setLoading(true)
     try {
       const data = await savedApi.getAll()
+      console.log("API DATA =", data) // 👈 AJOUTE ÇA
       setOffers(data.saved_offers || [])
     } catch (err) {
       console.error(err)

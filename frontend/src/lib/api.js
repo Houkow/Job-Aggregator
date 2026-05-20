@@ -25,9 +25,6 @@ async function request(endpoint, options = {}) {
 }
 
 // Auth
-// POST /api/auth/register
-// POST /api/auth/login
-// POST /api/auth/logout
 export const authApi = {
   login: (email, password) =>
     request('/api/auth/login', {
@@ -44,23 +41,21 @@ export const authApi = {
 }
 
 // Offres
-// GET  /api/offers
-// GET  /api/offers/:id
-// GET  /api/offers/saved
-// POST /api/offers/save/:id
 export const offersApi = {
   getAll: (params = {}) => {
-    // Mapping des params front → params backend
     const backendParams = {}
-    if (params.q)          backendParams.search        = params.q
-    if (params.location)   backendParams.location      = params.location
+    if (params.search)       backendParams.search        = params.search
+    if (params.q)            backendParams.search        = params.q
+    if (params.location)     backendParams.location      = params.location
+    if (params.contract_type && params.contract_type !== 'Tous')
+                             backendParams.contract_type = params.contract_type
     if (params.contract && params.contract !== 'Tous')
-                           backendParams.contract_type = params.contract
-    if (params.salary_min) backendParams.salary_min    = params.salary_min
-    if (params.page)       backendParams.page          = params.page
-    if (params.limit)      backendParams.limit         = params.limit
+                             backendParams.contract_type = params.contract
+    if (params.salary_min)   backendParams.salary_min    = params.salary_min
+    if (params.page)         backendParams.page          = params.page
+    if (params.limit)        backendParams.limit         = params.limit
 
-    const query = new URLSearchParams(params).toString()
+    const query = new URLSearchParams(backendParams).toString()
     return request(`/api/offers${query ? `?${query}` : ''}`)
   },
   getOne: (id) => request(`/api/offers/${id}`),
@@ -68,13 +63,10 @@ export const offersApi = {
 }
 
 // Offres sauvegardées
-// GET  /api/offers/saved
-// POST /api/offers/save/:id
 export const savedApi = {
   getAll: () => request('/api/offers/saved'),
   save: (offerId) =>
     request(`/api/offers/save/${offerId}`, { method: 'POST' }),
-  // Pas de DELETE ni PATCH dans son backend pour l'instant
   remove: (offerId) =>
     request(`/api/offers/save/${offerId}`, { method: 'DELETE' }),
   updateStatus: (offerId, status) =>
@@ -85,11 +77,6 @@ export const savedApi = {
 }
 
 // Admin
-// GET    /api/admin/users
-// DELETE /api/admin/users/:id
-// PATCH  /api/admin/users/:id/role
-// GET    /api/admin/offers
-// PATCH  /api/admin/offers/:id/status
 export const adminApi = {
   getUsers: () => request('/api/admin/users'),
   deleteUser: (id) =>
@@ -110,7 +97,6 @@ export const adminApi = {
 }
 
 // Profile
-// Pas de route profile dans ses fichiers — à confirmer avec lui
 export const profileApi = {
   get: () => request('/api/profile'),
   update: (data) =>

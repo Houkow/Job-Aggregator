@@ -1,312 +1,323 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { useAuth } from '@/context/AuthContext'
-import styles from '@/components/Chatbot/Chatbot.module.css'
+import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { offersApi, savedApi } from '@/lib/api'
+import Navbar from '@/components/Navbar/Navbar'
+import JobCard from '@/components/JobCard/JobCard'
+import Chatbot from '@/components/Chatbot/Chatbot'
+import styles from './explorer.module.css'
 
-const SUGGESTIONS = [
-  'Trouver un stage React à Paris',
-  'Offres en CDI remote',
-  'Emplois data science Lyon',
+const CONTRACT_TYPES = ['Tous', 'CDI', 'CDD', 'Stage', 'Alternance', 'Freelance']
+const EXPERIENCE_LEVELS = ['Tous niveaux', 'Junior (0-2 ans)', 'Confirmé (2-5 ans)', 'Senior (5+ ans)']
+const SORT_OPTIONS = [
+  { value: 'recent', label: 'Plus récentes' },
+  { value: 'salary_desc', label: 'Salaire décroissant' },
+  { value: 'salary_asc', label: 'Salaire croissant' },
 ]
 
-export default function Chatbot() {
-  const router = useRouter()
-  const { token } = useAuth()
+export default function ExplorerPage() {
+  const searchParams = useSearchParams()
+  const [offers, setOffers] = useState([])
+  const [recommended, setRecommended] = useState([])
+  const [savedIds, setSavedIds] = useState(new Set())
+  const [loading, setLoading] = useState(true)
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const [carouselIndex, setCarouselIndex] = useState(0)
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
 
-  const [open, setOpen]       = useState(false)
-  const [input, setInput]     = useState('')
-  const [loading, setLoading] = useState(false)
+  const [filters, setFilters] = useState({
+    q: searchParams.get('q') || '',
+    location: '',
+    contract: 'Tous',
+    experience: 'Tous niveaux',
+    sort: 'recent',
+  })
 
-  // history envoyée à l'API : [{role, content}]
-  const [history, setHistory] = useState([])
-
-  // messages affichés dans le chat : [{id, role, text, time, offers}]
-  const [messages, setMessages] = useState([
-    {
-      id: 1,
-      role: 'assistant',
-      text: "Bonjour ! Je suis Jobby, votre assistant de recherche d'emploi. Dites-moi quel type de poste vous recherchez !",
-      time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
-    },
-  ])
-
-  const bottomRef = useRef(null)
-  const inputRef  = useRef(null)
-
-  useEffect(() => {
-    if (open) {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-      inputRef.current?.focus()
-    }
-  }, [open, messages])
-
-  const sendMessage = async (text) => {
-    const content = (text || input).trim()
-    if (!content || loading) return
-
-    const now = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-
-    // Ajout du message utilisateur à l'affichage
-    const userMsg = { id: Date.now(), role: 'user', text: content, time: now }
-    setMessages((prev) => [...prev, userMsg])
-    setInput('')
+  const fetchOffers = useCallback(async () => {
     setLoading(true)
-
-    // Historique pour l'API (format OpenAI)
-    const updatedHistory = [
-      ...history,
-      { role: 'user', content },
-    ]
-
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/chatbot`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token && { Authorization: `Bearer ${token}` }),
-          },
-          body: JSON.stringify({
-            message: content,
-            history,               // historique avant ce message
-          }),
-        }
-      )
+      const params = {}
+      if (filters.q) params.search = filters.q
+      if (filters.location) params.location = filters.location
+      if (filters.contract !== 'Tous') params.contract_type = filters.contract
+      params.page = page
+      params.limit = 20
 
-      const data = await res.json()
-
-      const botTime = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-
-      // Ajout de la réponse du bot à l'affichage
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now() + 1,
-          role: 'assistant',
-          text: data.reply || "Désolé, je n'ai pas pu traiter votre demande.",
-          time: botTime,
-          offers: data.offers || [],
-          redirect: data.redirect || false,
-          url: data.url || null,
-        },
+      const [offersData, savedData] = await Promise.allSettled([
+        offersApi.getAll(params),
+        savedApi.getAll(),
       ])
 
-      // Mise à jour de l'historique avec les deux nouveaux messages
-      setHistory([
-        ...updatedHistory,
-        { role: 'assistant', content: data.reply || '' },
-      ])
-
-      // Redirection si le chatbot a trouvé assez d'infos
-      if (data.redirect && data.url) {
-        setTimeout(() => {
-          setOpen(false)
-          router.push(data.url)
-        }, 1800)
+      if (offersData.status === 'fulfilled') {
+        setOffers(offersData.value.offers || [])
+        setRecommended((offersData.value.offers || []).slice(0, 5))
+        setTotal(offersData.value.total || 0)
       }
 
-    } catch {
-      const errTime = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now() + 1,
-          role: 'assistant',
-          text: 'Une erreur est survenue. Veuillez réessayer.',
-          time: errTime,
-        },
-      ])
+      if (savedData.status === 'fulfilled') {
+        setSavedIds(new Set((savedData.value.saved_offers || []).map((s) => s.id)))
+      }
+    } catch (err) {
+      console.error(err)
     } finally {
       setLoading(false)
     }
-  }
+  }, [filters, page])
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      sendMessage()
+  useEffect(() => {
+    fetchOffers()
+  }, [fetchOffers])
+
+  const handleSave = async (offerId) => {
+    try {
+      if (savedIds.has(offerId)) {
+        await savedApi.remove(offerId)
+        setSavedIds((prev) => {
+          const next = new Set(prev)
+          next.delete(offerId)
+          return next
+        })
+      } else {
+        await savedApi.save(offerId)
+        setSavedIds((prev) => new Set(prev).add(offerId))
+      }
+    } catch (err) {
+      console.error(err)
     }
   }
 
-  return (
-    <>
-      {/* Bouton flottant */}
-      <button
-        className={`${styles.fab} ${open ? styles.fabOpen : ''}`}
-        onClick={() => setOpen((p) => !p)}
-        aria-label={open ? 'Fermer le chat' : 'Ouvrir le chat'}
-        aria-expanded={open}
-      >
-        {open ? (
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <line x1="18" y1="6" x2="6" y2="18"/>
-            <line x1="6" y1="6" x2="18" y2="18"/>
-          </svg>
-        ) : (
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-          </svg>
-        )}
-      </button>
+  const handleFilterChange = (key, value) => {
+    setPage(1)
+    setFilters((prev) => ({ ...prev, [key]: value }))
+  }
 
-      {/* Fenêtre chat */}
-      {open && (
-        <div
-          className={styles.window}
-          role="dialog"
-          aria-label="Assistant Jobby"
-          aria-modal="false"
-        >
-          {/* Header */}
-          <div className={styles.header}>
-            <div className={styles.headerLeft}>
-              <div className={styles.botAvatar}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                </svg>
-              </div>
+  const visibleRecommended = recommended.slice(carouselIndex, carouselIndex + 3)
+
+  return (
+    <main className={styles.main}>
+      <Navbar />
+
+      <div className={styles.content}>
+        {/* Offres recommandées */}
+        {recommended.length > 0 && (
+          <section className={styles.section}>
+            <div className={styles.sectionHeader}>
               <div>
-                <p className={styles.botName}>Jobby</p>
-                <p className={styles.botStatus}>
-                  <span className={styles.statusDot} />
-                  En ligne
+                <h2 className={styles.sectionTitle}>Nos offres sélectionnées pour vous</h2>
+                <p className={styles.sectionSub}>
+                  Des opportunités choisies en fonction de votre profil et de vos préférences
                 </p>
               </div>
+              <button className={styles.seeAll} onClick={() => handleFilterChange('q', '')}>
+                Voir tout →
+              </button>
             </div>
-            <button
-              className={styles.closeBtn}
-              onClick={() => setOpen(false)}
-              aria-label="Fermer"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="18" y1="6" x2="6" y2="18"/>
-                <line x1="6" y1="6" x2="18" y2="18"/>
-              </svg>
-            </button>
+
+            <div className={styles.carousel}>
+              {visibleRecommended.map((offer) => (
+                <div key={offer.id} className={styles.carouselCard}>
+                  <div className={styles.carouselImg}>
+                    <div className={styles.carouselLocation}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                        <circle cx="12" cy="10" r="3"/>
+                      </svg>
+                      {offer.formatted_places || 'France'}
+                    </div>
+                  </div>
+                  <div className={styles.carouselInfo}>
+                    <h3 className={styles.carouselTitle}>{offer.title}</h3>
+                    <p className={styles.carouselCompany}>{offer.company_name}</p>
+                    <div className={styles.carouselMeta}>
+                      <span className={styles.contractBadge}>
+                        {(offer.contract_types || [])[0] || 'CDI'}
+                      </span>
+                      <span className={styles.carouselDate}>
+                        {offer.publish_date
+                          ? `Il y a ${Math.floor((Date.now() - new Date(offer.publish_date)) / 86400000)} jours`
+                          : 'Récent'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {recommended.length > 3 && (
+                <button
+                  className={styles.carouselNext}
+                  onClick={() =>
+                    setCarouselIndex((i) =>
+                      i + 3 >= recommended.length ? 0 : i + 3
+                    )
+                  }
+                  aria-label="Offres suivantes"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="9 18 15 12 9 6"/>
+                  </svg>
+                </button>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* Toutes les offres */}
+        <section className={styles.section}>
+          <div className={styles.allHeader}>
+            <div>
+              <h2 className={styles.sectionTitle}>Toutes les offres</h2>
+              <p className={styles.offerCount}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+                  <polyline points="17 6 23 6 23 12"/>
+                </svg>
+                {total} opportunité{total !== 1 ? 's' : ''} disponible{total !== 1 ? 's' : ''}
+              </p>
+            </div>
           </div>
 
-          {/* Messages */}
-          <div className={styles.messages} role="log" aria-live="polite" aria-label="Messages">
-            {messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={`${styles.msgRow} ${msg.role === 'user' ? styles.msgRowUser : ''}`}
-              >
-                {msg.role === 'assistant' && (
-                  <div className={styles.msgAvatar}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                    </svg>
-                  </div>
-                )}
-
-                <div className={styles.msgContent}>
-                  <div className={`${styles.bubble} ${msg.role === 'user' ? styles.bubbleUser : styles.bubbleBot}`}>
-                    {msg.text}
-                  </div>
-
-                  {/* Offres suggérées */}
-                  {msg.offers && msg.offers.length > 0 && (
-                    <div className={styles.offerSuggestions}>
-                      {msg.offers.map((offer) => (
-                        <div
-                          key={offer.id}
-                          className={styles.offerChip}
-                          onClick={() => router.push(`/explorer/${offer.id}`)}
-                          role="button"
-                          tabIndex={0}
-                          onKeyDown={(e) => e.key === 'Enter' && router.push(`/explorer/${offer.id}`)}
-                        >
-                          <div className={styles.offerChipInfo}>
-                            <span className={styles.offerChipTitle}>{offer.title}</span>
-                            <span className={styles.offerChipCompany}>{offer.company}</span>
-                          </div>
-                          {offer.contractType && (
-                            <span className={styles.offerChipBadge}>{offer.contractType}</span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Indicateur de redirection */}
-                  {msg.redirect && msg.url && (
-                    <div className={styles.redirectHint}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <polyline points="5 12 12 5 19 12"/>
-                        <polyline points="12 19 12 5"/>
-                      </svg>
-                      Redirection en cours...
-                    </div>
-                  )}
-
-                  <span className={styles.msgTime}>{msg.time}</span>
+          {/* Barre de recherche + filtres */}
+          <div className={styles.filterBox}>
+            <div className={styles.searchRow}>
+              <div className={styles.searchWrap}>
+                <svg className={styles.searchIcon} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="11" cy="11" r="8"/>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                <input
+                  className={styles.searchInput}
+                  type="text"
+                  placeholder="Rechercher un poste, entreprise, compétence..."
+                  value={filters.q}
+                  onChange={(e) => handleFilterChange('q', e.target.value)}
+                  aria-label="Rechercher des offres"
+                />
+              </div>
+              <div className={styles.searchMeta}>
+                <button
+                  className={`${styles.filterToggle} ${filtersOpen ? styles.filterToggleActive : ''}`}
+                  onClick={() => setFiltersOpen((p) => !p)}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="4" y1="6" x2="20" y2="6"/>
+                    <line x1="8" y1="12" x2="16" y2="12"/>
+                    <line x1="11" y1="18" x2="13" y2="18"/>
+                  </svg>
+                  Filtres
+                </button>
+                <div className={styles.sortWrap}>
+                  <span className={styles.sortLabel}>Trier par :</span>
+                  <select
+                    className={styles.sortSelect}
+                    value={filters.sort}
+                    onChange={(e) => handleFilterChange('sort', e.target.value)}
+                    aria-label="Trier les offres"
+                  >
+                    {SORT_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
-            ))}
+            </div>
 
-            {/* Typing indicator */}
-            {loading && (
-              <div className={styles.msgRow}>
-                <div className={styles.msgAvatar}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                  </svg>
+            {filtersOpen && (
+              <div className={styles.filtersRow}>
+                <div className={styles.filterField}>
+                  <label className={styles.filterLabel}>Localisation</label>
+                  <input
+                    className={styles.filterInput}
+                    type="text"
+                    placeholder="Ex: Paris, Lyon..."
+                    value={filters.location}
+                    onChange={(e) => handleFilterChange('location', e.target.value)}
+                  />
                 </div>
-                <div className={styles.typing}>
-                  <span /><span /><span />
+                <div className={styles.filterField}>
+                  <label className={styles.filterLabel}>Type de contrat</label>
+                  <select
+                    className={styles.filterInput}
+                    value={filters.contract}
+                    onChange={(e) => handleFilterChange('contract', e.target.value)}
+                  >
+                    {CONTRACT_TYPES.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className={styles.filterField}>
+                  <label className={styles.filterLabel}>Expérience</label>
+                  <select
+                    className={styles.filterInput}
+                    value={filters.experience}
+                    onChange={(e) => handleFilterChange('experience', e.target.value)}
+                  >
+                    {EXPERIENCE_LEVELS.map((e) => (
+                      <option key={e} value={e}>{e}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
             )}
-
-            <div ref={bottomRef} />
           </div>
 
-          {/* Suggestions initiales */}
-          {messages.length === 1 && (
-            <div className={styles.suggestions}>
-              {SUGGESTIONS.map((s) => (
-                <button
-                  key={s}
-                  className={styles.suggestion}
-                  onClick={() => sendMessage(s)}
-                >
-                  {s}
-                </button>
+          {/* Liste des offres */}
+          {loading ? (
+            <div className={styles.loadingList}>
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className={styles.skeleton} />
+              ))}
+            </div>
+          ) : offers.length === 0 ? (
+            <div className={styles.empty}>
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <p>Aucune offre trouvée</p>
+              <span>Essayez de modifier vos filtres</span>
+            </div>
+          ) : (
+            <div className={styles.offerList}>
+              {offers.map((offer) => (
+                <JobCard
+                  key={offer.id}
+                  offer={offer}
+                  saved={savedIds.has(offer.id)}
+                  onSave={() => handleSave(offer.id)}
+                />
               ))}
             </div>
           )}
 
-          {/* Input */}
-          <div className={styles.inputRow}>
-            <input
-              ref={inputRef}
-              className={styles.input}
-              type="text"
-              placeholder="Décrivez votre recherche..."
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              disabled={loading}
-              aria-label="Message à envoyer"
-            />
-            <button
-              className={styles.sendBtn}
-              onClick={() => sendMessage()}
-              disabled={!input.trim() || loading}
-              aria-label="Envoyer"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="22" y1="2" x2="11" y2="13"/>
-                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-      )}
-    </>
+          {/* Pagination */}
+          {total > 20 && (
+            <div className={styles.pagination}>
+              <button
+                className={styles.pageBtn}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+              >
+                ← Précédent
+              </button>
+              <span className={styles.pageInfo}>
+                Page {page} / {Math.ceil(total / 20)}
+              </span>
+              <button
+                className={styles.pageBtn}
+                onClick={() => setPage((p) => p + 1)}
+                disabled={page >= Math.ceil(total / 20)}
+              >
+                Suivant →
+              </button>
+            </div>
+          )}
+        </section>
+      </div>
+
+      <Chatbot />
+    </main>
   )
 }

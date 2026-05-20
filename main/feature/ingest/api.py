@@ -2,10 +2,8 @@ import requests
 import time
 from clean import clean_job
 from save import save_jobs
-from dotenv import dotenv_values
 
-config = dotenv_values(".env")
-API_KEY = config.get("API_KEY")
+API_KEY = "baf44dad-14d5-4c26-8ccf-78afdbcb80a4"
 BASE_URL = "https://epi-api.welovedevs.com/v1"
 PAGE_SIZE = 100
 
