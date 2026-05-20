@@ -1,9 +1,11 @@
 .venv/
-
+.env
 main/feature/ingest/venv/
 main/feature/ingest/__pycache__/
+main/feature/chatbot/__pycache__/
 
 backend/node_modules/
+frontend/package-lock.json
 backend/.env
 *.log
 
