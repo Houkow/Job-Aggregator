@@ -12,8 +12,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from chatbot import ask_chatbot, extract_filters, enough_information
-from search import search_jobs, format_jobs_for_response, build_explorer_url
+from feature.chatbot.chatbot import ask_chatbot, extract_filters, enough_information
+from feature.chatbot.search import search_jobs, format_jobs_for_response, build_explorer_url
 
 app = FastAPI(title="Jobby Chatbot API")
 
