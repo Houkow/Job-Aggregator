@@ -19,7 +19,7 @@ services:
     container_name: backend-api
     restart: always
     ports:
-      - "4001:4000"
+      - "4000:4000"
     volumes:
       - ./backend:/app
       - /app/node_modules
@@ -35,7 +35,7 @@ services:
     working_dir: /app
     restart: always
     ports:
-      - "5001:5000"
+      - "5000:5000"
     volumes:
       - ./main:/app
       - ./backend/.env:/app/.env
@@ -55,7 +55,7 @@ services:
     working_dir: /app
     restart: always
     ports:
-      - "3001:3000"
+      - "3000:3000"
     volumes:
       - ./frontend:/app
       - /app/node_modules
