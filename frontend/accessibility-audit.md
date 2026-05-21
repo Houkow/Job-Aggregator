@@ -72,4 +72,4 @@
 
 ## Conclusion
 
-Le projet respecte les principaux critères WCAG 2.1 niveau AA avec un score Lighthouse moyen de **95.7/100** en accessibilité. Les éléments fondamentaux sont en place : navigation clavier, skip link, labels de formulaire, annonces d'erreur, focus visible et langue de page. Les avertissements restants concernent uniquement la performance (JavaScript non minifié, images) et n'impactent pas l'accessibilité.
+Le projet respecte les principaux critères WCAG 2.1 niveau AA avec un score Lighthouse moyen de **95.7/100** en accessibilité. Les éléments fondamentaux sont en place : navigation clavier, skip link, labels de formulaire, annonces d'erreur, focus visible et langue de page. Les avertissements restants concernent uniquement la performance (JavaScript non minifié, images) et n'impactent pas l'accessibilité .
