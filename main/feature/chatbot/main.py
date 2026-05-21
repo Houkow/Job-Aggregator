@@ -1,13 +1,3 @@
-"""
-Point d'entrée FastAPI pour le chatbot Jobby.
-Lancé en parallèle du backend Node.js sur le port 5000.
-
-Le backend Node.js (Express) proxy les requêtes /api/chatbot
-vers ce serveur Python via http://localhost:5001/chatbot.
-
-Lancement : uvicorn main:app --host 0.0.0.0 --port 5000 --reload
-"""
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
