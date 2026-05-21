@@ -71,6 +71,7 @@ export default function LoginPage() {
               onChange={handleChange}
               autoComplete="email"
               aria-required="true"
+              aria-describedby="login-error"
             />
           </div>
 
@@ -86,11 +87,12 @@ export default function LoginPage() {
               onChange={handleChange}
               autoComplete="current-password"
               aria-required="true"
+              aria-describedby="login-error"
             />
           </div>
 
           {error && (
-            <div className={styles.error} role="alert">
+            <div id="login-error" className={styles.error} role="alert">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10"/>
                 <line x1="12" y1="8" x2="12" y2="12"/>
