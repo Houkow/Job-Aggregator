@@ -5,8 +5,9 @@ async function request(endpoint, options = {}) {
     ? localStorage.getItem('token')
     : null
 
+  const isFormData = options.body instanceof FormData
   const headers = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(token && { Authorization: `Bearer ${token}` }),
     ...options.headers,
   }
@@ -54,6 +55,8 @@ export const offersApi = {
     if (params.salary_min)   backendParams.salary_min    = params.salary_min
     if (params.page)         backendParams.page          = params.page
     if (params.limit)        backendParams.limit         = params.limit
+    if (params.experience)   backendParams.experience    = params.experience
+    if (params.sort)         backendParams.sort          = params.sort
 
     const query = new URLSearchParams(backendParams).toString()
     return request(`/api/offers${query ? `?${query}` : ''}`)
@@ -62,7 +65,7 @@ export const offersApi = {
   ingest: () => request('/api/ingest', { method: 'POST' }),
 }
 
-// Offres sauvegardées
+// Offres sauvegardÃ©es
 export const savedApi = {
   getAll: () => request('/api/offers/saved'),
   save: (offerId) =>
@@ -104,6 +107,15 @@ export const profileApi = {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
+  uploadAvatar: (file) => {
+    const form = new FormData()
+    form.append('avatar', file)
+    return request('/api/profile/avatar', {
+      method: 'POST',
+      headers: {},
+      body: form,
+    })
+  },
   uploadCV: (file) => {
     const form = new FormData()
     form.append('cv', file)

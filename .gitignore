@@ -11,3 +11,6 @@ backend/.env
 *.log
 
 main/feature/ingest/.env
+
+venv/
+node_modules/

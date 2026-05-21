@@ -8,6 +8,7 @@ import styles from './Navbar.module.css'
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [avatarUrl, setAvatarUrl] = useState(null)
   const { user, logout, isAuthenticated } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const router = useRouter()
@@ -31,6 +32,15 @@ export default function Navbar() {
   ]
 
   useEffect(() => {
+    if (user?.avatar) {
+      setAvatarUrl(user.avatar)
+    } else {
+      const stored = localStorage.getItem('userAvatar')
+      if (stored) setAvatarUrl(stored)
+    }
+  }, [user, user?.avatar])
+
+  useEffect(() => {
     function handleClickOutside(e) {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
         setMenuOpen(false)
@@ -49,6 +59,8 @@ export default function Navbar() {
   const isActive = (href) => pathname === href
 
   return (
+    <>
+    <a href="#main-content" className={styles.skipLink} onClick={(e) => { e.preventDefault(); const el = document.getElementById("main-content"); if (el) { el.focus(); el.scrollIntoView(); } }}>Aller au contenu principal</a>
     <nav className={styles.navbar} role="navigation" aria-label="Navigation principale">
       <div className={styles.inner}>
         <button
@@ -80,8 +92,8 @@ export default function Navbar() {
             aria-label="Menu utilisateur"
             aria-expanded={menuOpen}
           >
-            {user?.avatar ? (
-              <img src={user.avatar} alt={user.email} className={styles.avatarImg} />
+            {user?.avatar || avatarUrl ? (
+              <img src={user?.avatar || avatarUrl} alt={user?.email} className={styles.avatarImg} />
             ) : (
               <span className={styles.avatarInitial}>
                 {user?.email?.[0]?.toUpperCase() || '?'}
@@ -178,5 +190,6 @@ export default function Navbar() {
         </div>
       </div>
     </nav>
+    </>
   )
 }

@@ -51,7 +51,7 @@ export default function MesOffresPage() {
   }
 
   return (
-    <main className={styles.main}>
+    <main id="main-content" tabIndex="-1" className={styles.main}>
       <Navbar />
 
       <div className={styles.content}>

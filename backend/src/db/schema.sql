@@ -15,6 +15,22 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS profiles (
+  user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  first_name VARCHAR(100),
+  last_name VARCHAR(100),
+  phone VARCHAR(20),
+  city VARCHAR(100),
+  current_job VARCHAR(100),
+  experience TEXT,
+  education TEXT,
+  skills TEXT,
+  avatar TEXT,
+  cv_name TEXT,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS offers (
     id SERIAL PRIMARY KEY,
     external_id VARCHAR(255) UNIQUE,
