@@ -9,8 +9,13 @@ config = dotenv_values(
 
 
 def get_connection():
+    # On force 'postgres' (le nom de ton service docker-compose) si DB_HOST vaut localhost ou est absent
+    db_host = config.get("DB_HOST", "postgres")
+    if db_host == "localhost":
+        db_host = "postgres"
+
     return psycopg2.connect(
-        host=config.get("DB_HOST", "localhost"),
+        host=db_host,
         port=config.get("DB_PORT", 5432),
         dbname=config.get("DB_NAME", "jobdb"),
         user=config.get("DB_USER", "postgres"),
