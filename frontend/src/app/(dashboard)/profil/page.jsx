@@ -8,7 +8,7 @@ import Chatbot from '@/components/Chatbot/Chatbot'
 import styles from './profil.module.css'
 
 export default function ProfilPage() {
-  const { user } = useAuth()
+  const { user, updateUser } = useAuth()
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
@@ -21,6 +21,7 @@ export default function ProfilPage() {
     skills: '',
   })
   const [cvFile, setCvFile] = useState(null)
+  const [avatarFile, setAvatarFile] = useState(null)
   const [cvName, setCvName] = useState('')
   const [avatar, setAvatar] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -50,7 +51,7 @@ export default function ProfilPage() {
         education: p.education || '',
         skills: p.skills || '',
       })
-      if (p.avatar) setAvatar(p.avatar)
+      if (p.avatar) setAvatar(p.avatar.startsWith('http') ? p.avatar : 'http://localhost:4000' + p.avatar)
       if (p.cvName) setCvName(p.cvName)
     } catch (err) {
       console.error(err)
@@ -69,6 +70,7 @@ export default function ProfilPage() {
   const handleAvatarChange = (e) => {
     const file = e.target.files[0]
     if (!file) return
+    setAvatarFile(file)
     const reader = new FileReader()
     reader.onload = (ev) => setAvatar(ev.target.result)
     reader.readAsDataURL(file)
@@ -105,6 +107,13 @@ export default function ProfilPage() {
     try {
       await profileApi.update(form)
       if (cvFile) await profileApi.uploadCV(cvFile)
+      if (avatarFile) {
+        const res = await profileApi.uploadAvatar(avatarFile)
+        const fullUrl = res.avatar.startsWith('http') ? res.avatar : 'http://localhost:4000' + res.avatar
+        setAvatar(fullUrl)
+        updateUser({ avatar: fullUrl })
+        localStorage.setItem('userAvatar', fullUrl)
+      }
       setSuccess(true)
       setTimeout(() => setSuccess(false), 3000)
     } catch (err) {
@@ -116,7 +125,7 @@ export default function ProfilPage() {
 
   if (loading) {
     return (
-      <main className={styles.main}>
+      <main id="main-content" tabIndex="-1" className={styles.main}>
         <Navbar />
         <div className={styles.loadingWrap}>
           {[...Array(4)].map((_, i) => (

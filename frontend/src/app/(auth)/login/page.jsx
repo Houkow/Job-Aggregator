@@ -42,7 +42,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className={styles.main}>
+    <main id="main-content" tabIndex="-1" className={styles.main}>
       <div className={styles.card}>
         <div className={styles.logoWrap}>
           <div className={styles.logoIcon}>

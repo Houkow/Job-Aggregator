@@ -4,10 +4,11 @@ const path = require('path')
 require('dotenv').config()
 
 const app = express()
+app.use((req, res, next) => { console.log('>>> REQUEST:', req.method, req.path); next() })
 
 // Middlewares globaux
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002'],
   credentials: true,
 }))
 
@@ -35,7 +36,7 @@ const recruiterRoutes = require('./routes/recruiter.routes')
 app.use('/api/auth',      authRoutes)
 app.use('/api/offers',    offersRoutes)
 app.use('/api/admin',     adminRoutes)
-app.use('/api/ingest',    ingestRoutes)
+app.use('/api/ingest', (req, res, next) => { console.log('INGEST HIT', req.method, req.path); next() }, ingestRoutes)
 app.use('/api/chatbot',   chatbotRoutes)
 app.use('/api/profile',   profileRoutes)
 app.use('/api/recruiter', recruiterRoutes)
