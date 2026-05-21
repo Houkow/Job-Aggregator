@@ -1,39 +1,47 @@
-from openai import OpenAI
 import json
+import os
+from dotenv import load_dotenv
+from openai import OpenAI
+
+load_dotenv()
 
 client = OpenAI(
     api_key="lm-studio",
-    base_url="http://host.docker.internal:1234"
+    base_url="http://host.docker.internal:1234/v1"
 )
 
-MODEL = "lama3-8b-hikikomori-v0.3"
+MODEL = "phi-4-mini-instruct"
 
 SYSTEM_PROMPT = """
-Tu es Jobby, un assistant de recherche d'emploi.
+Tu es Jobby, un assistant virtuel pour un site de recherche d'emploi ENTIÈREMENT DÉDIÉ AUX MÉTIERS DE L'INFORMATIQUE ET DE LA TECH.
 
-Ton objectif :
-- Comprendre quel type de poste l'utilisateur recherche
-- Affiner progressivement les critères de recherche
-- Aider en cas de doute sur une orientation ou un métier
+RÈGLES DE STYLE ABSOLUES :
+- Fais des réponses TRÈS COURTES (1 à 2 phrases maximum). Pas de pavés.
+- Ne pose JAMAIS plus d'UNE seule question à la fois.
+- Sois naturel, pas de listes à puces.
 
-Tu dois toujours répondre en français, de façon naturelle et concise.
+RÈGLES MÉTIER ET SÉCURITÉ CRUCIALES :
+1. Le type de contrat (CDI, CDD, Stage, Alternance) n'est PAS un domaine informatique.
+2. Notre site ne gère QUE l'informatique. L'utilisateur doit obligatoirement préciser un domaine informatique (ex: développement, IA, data, réseau, design, produit) ou un poste (ex: développeur Python, DevOps).
 
-Tu peux collecter les informations suivantes :
-- Localisation (ville, région, remote)
-- Type de contrat (CDI, CDD, Stage, Alternance, Freelance)
-- Niveau d'expérience (junior, confirmé, senior)
-- Prétentions salariales
-- Métier ou domaine recherché
+COMPORTEMENT SI LE MÉTIER INFORMATIQUE EST MANQUANT :
+Si l'utilisateur donne un contrat ou une ville mais pas de métier informatique précis, demande-lui poliment de clarifier son domaine ou poste dans la tech.
+Exemple de mauvaise réponse utilisateur : "Je cherche un stage sur Paris"
+Exemple de ta relance : "Je peux vous aider à trouver un stage sur Paris ! Quel est votre domaine ou poste dans l'informatique (développement, data, design...) ?"
 
-Quand tu as suffisamment d'informations, dis à l'utilisateur que tu vas
-lui trouver des offres correspondantes.
+COMPORTEMENT DE PROPOSITION (MÉTIER TECH + VILLE ENFIN CONNUS) :
+Uniquement quand tu as un vrai métier/domaine informatique ET une ville, propose le choix :
+"J'ai assez d'informations pour vous rediriger vers des offres cohérentes. Souhaitez-vous voir les résultats dès maintenant, ou préférez-vous me donner plus de détails (contrat, salaire) ?"
+
+COMPORTEMENT CRUCIAL DE VALIDATION (L'UTILISATEUR DIT OUI / ACCEPTE) :
+Si l'utilisateur valide (ex: "oui", "vas-y"), réponds avec cette structure exacte :
+"Parfait ! Je recherche des postes liés à [Métier informatique] dans la région [Nom de la région ou ville]. Lancement de la recherche..."
 """
 
 EXTRACT_PROMPT = """
 Analyse la conversation et extrais les filtres de recherche d'emploi.
 
-Réponds UNIQUEMENT avec un objet JSON valide, sans texte avant ni après,
-sans balises markdown, sans commentaires.
+Réponds UNIQUEMENT avec un objet JSON valide.
 
 Format attendu :
 {
@@ -45,11 +53,11 @@ Format attendu :
 }
 
 Règles :
-- location : ville ou région mentionnée (ex: "Paris", "Lyon", "remote")
+- location : ville ou région mentionnée (ex: "Paris", "Lyon", "remote") ou null
 - contract_type : exactement l'une de ces valeurs : "CDI", "CDD", "Stage", "Alternance", "Freelance" ou null
 - experience : "junior", "confirme" ou "senior" ou null
-- salary_min : nombre entier (salaire annuel brut en euros) ou null
-- job_type : métier ou domaine (ex: "développeur React", "data scientist", "designer UX")
+- salary_min : nombre entier ou null
+- job_type : métier ou domaine (ex: "développeur React", "intelligence artificielle") ou null
 """
 
 
@@ -65,12 +73,14 @@ def extract_filters(conversation: str) -> dict:
                 {"role": "system", "content": EXTRACT_PROMPT},
                 {"role": "user", "content": conversation}
             ],
-            temperature=0
+            temperature=0,
+            # Force LM Studio à guider le modèle pour générer un JSON valide instantanément
+            response_format={"type": "json_object"}
         )
 
         raw = response.choices[0].message.content.strip()
 
-        # Nettoyage au cas où le modèle ajoute des backticks
+        # Nettoyage de sécurité au cas où des backticks markdown subsistent
         if raw.startswith("```"):
             raw = raw.split("```")[1]
             if raw.startswith("json"):

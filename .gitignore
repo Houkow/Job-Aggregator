@@ -5,6 +5,7 @@ main/feature/ingest/__pycache__/
 main/feature/chatbot/__pycache__/
 
 backend/node_modules/
+main/feature/__pycache__/
 frontend/package-lock.json
 backend/.env
 *.log
