@@ -1,13 +1,3 @@
-"""
-Point d'entrée FastAPI pour le chatbot Jobby.
-Lancé en parallèle du backend Node.js sur le port 5000.
-
-Le backend Node.js (Express) proxy les requêtes /api/chatbot
-vers ce serveur Python via http://localhost:5000/chatbot.
-
-Lancement : uvicorn main:app --host 0.0.0.0 --port 5000 --reload
-"""
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -33,41 +23,34 @@ class ChatRequest(BaseModel):
 
 @app.post("/chatbot")
 def chatbot_endpoint(request: ChatRequest):
-    """
-    Endpoint principal du chatbot.
-
-    Flux :
-    1. Extraire les filtres depuis la conversation complète
-    2. Si assez d'infos → chercher des offres + construire l'URL de redirection
-    3. Sinon → continuer la conversation
-    """
-
-    # Reconstruction de la conversation complète pour l'extraction
+    # 1. Reconstruction du texte de la conversation
     conversation_text = ""
     for msg in request.history:
         role = "Utilisateur" if msg.get("role") == "user" else "Assistant"
         conversation_text += f"{role}: {msg.get('content', '')}\n"
     conversation_text += f"Utilisateur: {request.message}"
 
-    # Extraction des filtres
+    # 2. Extraction des filtres par l'IA
     filters = extract_filters(conversation_text)
 
-    # Assez d'infos → on redirige vers l'explorer
-    if enough_information(filters):
+    # 3. Génération de la réponse textuelle de Jobby
+    reply = ask_chatbot(request.message, request.history)
+
+    # 4. LA SEULE CONDITION DE REDIRECTION : Le bot a dit la phrase clé suite au "oui" de l'utilisateur
+    bot_veut_rediriger = "lancement de la recherche" in reply.lower()
+
+    if bot_veut_rediriger:
+        # Sécurité : On s'assure que les filtres essentiels sont là pour l'URL
+        if not filters.get("job_type"): 
+            filters["job_type"] = "informatique"
+        if not filters.get("location"): 
+            filters["location"] = "Paris"
+
         rows = search_jobs(filters)
         offers = format_jobs_for_response(rows)
         url = build_explorer_url(filters)
 
-        if offers:
-            reply = (
-                f"Parfait, j'ai trouvé {len(offers)} offre(s) qui correspondent "
-                f"à votre recherche ! Je vous redirige vers les résultats..."
-            )
-        else:
-            reply = (
-                "Je n'ai pas trouvé d'offres exactement correspondantes, "
-                "mais voici les offres les plus proches de vos critères."
-            )
+        print(f"--- REDIRECTION CONFIRMÉE PAR L'UTILISATEUR --- URL: {url}")
 
         return {
             "reply": reply,
@@ -77,9 +60,7 @@ def chatbot_endpoint(request: ChatRequest):
             "filters": filters
         }
 
-    # Pas assez d'infos → on continue la conversation
-    reply = ask_chatbot(request.message, request.history)
-
+    # Si le mot-clé n'est pas là, on reste sur le chat (il a proposé le choix, ou l'utilisateur donne un salaire)
     return {
         "reply": reply,
         "redirect": False,
