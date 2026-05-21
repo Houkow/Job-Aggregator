@@ -83,17 +83,32 @@
   padding: 12px;
 }
 
+.carouselImgPhoto {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px 12px 0 0;
+}
+
 .carouselLocation {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: 4px;
-  background: rgba(255,255,255,0.9);
+
+  background: rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(4px);
+
+  color: #fff;
+
   border-radius: 20px;
   padding: 4px 10px;
+
   font-size: 0.75rem;
   font-weight: 500;
-  color: #1a1a1a;
 }
 
 .carouselInfo {

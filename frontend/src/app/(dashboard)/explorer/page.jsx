@@ -25,6 +25,26 @@ const CONTRACT_MAP = {
   'Temps partiel': 'partTime',
 }
 
+const UNSPLASH_KEY = process.env.NEXT_PUBLIC_UNSPLASH_ACCESS_KEY
+
+const cityImageCache = {}
+
+const fetchCityImage = async (formattedPlaces) => {
+  const city = (formattedPlaces || 'France').split(',')[0].trim()
+  if (cityImageCache[city]) return cityImageCache[city]
+  try {
+    const res = await fetch(
+      `https://api.unsplash.com/photos/random?query=${encodeURIComponent(city + ' city')}&orientation=landscape&client_id=${UNSPLASH_KEY}`
+    )
+    const data = await res.json()
+    const url = data?.urls?.regular || null
+    cityImageCache[city] = url
+    return url
+  } catch {
+    return null
+  }
+}
+
 export default function ExplorerPage() {
   const searchParams = useSearchParams()
   const [offers, setOffers] = useState([])
@@ -35,26 +55,22 @@ export default function ExplorerPage() {
   const [carouselIndex, setCarouselIndex] = useState(0)
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
+  const [cityImages, setCityImages] = useState({})
 
   const [filters, setFilters] = useState({
     q: searchParams.get('q') || '',
-    location: searchParams.get('location') || '', // Récupère "Paris"
-    contract: searchParams.get('contract_type') || 'Tous', // Récupère le type de contrat si existant
+    location: searchParams.get('location') || '',
+    contract: searchParams.get('contract_type') || 'Tous',
     experience: searchParams.get('experience') || 'Tous niveaux',
     sort: 'recent',
   })
 
-  // 2. CRUCIAL : Met à jour les champs si l'utilisateur utilise le chatbot 
-  // alors qu'il se trouve déjà sur la page /explorer
   useEffect(() => {
     const loc = searchParams.get('location') || '';
     const contract = searchParams.get('contract_type') || 'Tous';
-    
-    // Si l'URL contient une localisation ou un contrat, on ouvre automatiquement le volet des filtres pour l'afficher à l'écran
     if (loc || contract !== 'Tous') {
       setFiltersOpen(true);
     }
-
     setFilters({
       q: searchParams.get('q') || '',
       location: loc,
@@ -64,52 +80,60 @@ export default function ExplorerPage() {
     });
   }, [searchParams]);
 
+  // Charge les images de ville pour les offres recommandées
+  useEffect(() => {
+    if (recommended.length === 0) return
+    const load = async () => {
+      const entries = await Promise.all(
+        recommended.map(async (offer) => {
+          const city = (offer.formatted_places || 'France').split(',')[0].trim()
+          const url = await fetchCityImage(offer.formatted_places)
+          return [city, url]
+        })
+      )
+      setCityImages(Object.fromEntries(entries))
+    }
+    load()
+  }, [recommended])
+
   const fetchOffers = useCallback(async () => {
-  setLoading(true)
+    setLoading(true)
+    try {
+      const params = {}
+      if (filters.q) params.search = filters.q
+      if (filters.location) params.location = filters.location
+      if (filters.contract !== 'Tous') {
+        params.contract_type = CONTRACT_MAP[filters.contract] || filters.contract
+      }
+      if (filters.experience !== 'Tous niveaux') {
+        params.experience = filters.experience
+      }
+      if (filters.sort) {
+        params.sort = filters.sort
+      }
+      params.page = page
+      params.limit = 20
 
-  try {
-    const params = {}
+      const [offersData, savedData] = await Promise.allSettled([
+        offersApi.getAll(params),
+        savedApi.getAll(),
+      ])
 
-    if (filters.q) params.search = filters.q
-    if (filters.location) params.location = filters.location
+      if (offersData.status === 'fulfilled') {
+        setOffers(offersData.value.offers || [])
+        setRecommended((offersData.value.offers || []).slice(0, 5))
+        setTotal(offersData.value.total || 0)
+      }
 
-    if (filters.contract !== 'Tous') {
-      params.contract_type =
-        CONTRACT_MAP[filters.contract] || filters.contract
+      if (savedData.status === 'fulfilled') {
+        setSavedIds(new Set((savedData.value.saved_offers || []).map((s) => s.id)))
+      }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
     }
-
-    if (filters.experience !== 'Tous niveaux') {
-      params.experience = filters.experience
-    }
-
-    if (filters.sort) {
-      params.sort = filters.sort
-    }
-
-    params.page = page
-    params.limit = 20
-
-    const [offersData, savedData] = await Promise.allSettled([
-      offersApi.getAll(params),
-      savedApi.getAll(),
-    ])
-
-    if (offersData.status === 'fulfilled') {
-      setOffers(offersData.value.offers || [])
-      setRecommended((offersData.value.offers || []).slice(0, 5))
-      setTotal(offersData.value.total || 0)
-    }
-
-    if (savedData.status === 'fulfilled') {
-      setSavedIds(new Set((savedData.value.saved_offers || []).map((s) => s.id)))
-    }
-
-  } catch (err) {
-    console.error(err)
-  } finally {
-    setLoading(false)
-  }
-}, [filters, page])
+  }, [filters, page])
 
   useEffect(() => {
     fetchOffers()
@@ -161,33 +185,44 @@ export default function ExplorerPage() {
             </div>
 
             <div className={styles.carousel}>
-              {visibleRecommended.map((offer) => (
-                <div key={offer.id} className={styles.carouselCard}>
-                  <div className={styles.carouselImg}>
-                    <div className={styles.carouselLocation}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                        <circle cx="12" cy="10" r="3"/>
-                      </svg>
-                      {offer.formatted_places || 'France'}
+              {visibleRecommended.map((offer) => {
+                const city = (offer.formatted_places || 'France').split(',')[0].trim()
+                const imgUrl = cityImages[city]
+                return (
+                  <div key={offer.id} className={styles.carouselCard}>
+                    <div className={styles.carouselImg}>
+                      {imgUrl && (
+                        <img
+                          src={imgUrl}
+                          alt={city}
+                          className={styles.carouselImgPhoto}
+                        />
+                      )}
+                      <div className={styles.carouselLocation}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                          <circle cx="12" cy="10" r="3"/>
+                        </svg>
+                        {offer.formatted_places || 'France'}
+                      </div>
+                    </div>
+                    <div className={styles.carouselInfo}>
+                      <h3 className={styles.carouselTitle}>{offer.title}</h3>
+                      <p className={styles.carouselCompany}>{offer.company_name}</p>
+                      <div className={styles.carouselMeta}>
+                        <span className={styles.contractBadge}>
+                          {(offer.contract_types || [])[0] || 'CDI'}
+                        </span>
+                        <span className={styles.carouselDate}>
+                          {offer.publish_date
+                            ? `Il y a ${Math.floor((Date.now() - new Date(offer.publish_date)) / 86400000)} jours`
+                            : 'Récent'}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                  <div className={styles.carouselInfo}>
-                    <h3 className={styles.carouselTitle}>{offer.title}</h3>
-                    <p className={styles.carouselCompany}>{offer.company_name}</p>
-                    <div className={styles.carouselMeta}>
-                      <span className={styles.contractBadge}>
-                        {(offer.contract_types || [])[0] || 'CDI'}
-                      </span>
-                      <span className={styles.carouselDate}>
-                        {offer.publish_date
-                          ? `Il y a ${Math.floor((Date.now() - new Date(offer.publish_date)) / 86400000)} jours`
-                          : 'Récent'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
 
               {recommended.length > 3 && (
                 <button
