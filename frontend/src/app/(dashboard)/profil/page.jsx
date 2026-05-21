@@ -105,7 +105,6 @@ export default function ProfilPage() {
     try {
       await profileApi.update(form)
       if (cvFile) await profileApi.uploadCV(cvFile)
-      updateUser({ avatar: avatar || null })
       setSuccess(true)
       setTimeout(() => setSuccess(false), 3000)
     } catch (err) {

@@ -16,6 +16,15 @@ const SORT_OPTIONS = [
   { value: 'salary_asc', label: 'Salaire croissant' },
 ]
 
+const CONTRACT_MAP = {
+  'CDI': 'permanent',
+  'CDD': 'fixedTerm',
+  'Stage': 'internship',
+  'Alternance': 'apprenticeship',
+  'Freelance': 'freelance',
+  'Temps partiel': 'partTime',
+}
+
 export default function ExplorerPage() {
   const searchParams = useSearchParams()
   const [offers, setOffers] = useState([])
@@ -29,42 +38,78 @@ export default function ExplorerPage() {
 
   const [filters, setFilters] = useState({
     q: searchParams.get('q') || '',
-    location: '',
-    contract: 'Tous',
-    experience: 'Tous niveaux',
+    location: searchParams.get('location') || '', // Récupère "Paris"
+    contract: searchParams.get('contract_type') || 'Tous', // Récupère le type de contrat si existant
+    experience: searchParams.get('experience') || 'Tous niveaux',
     sort: 'recent',
   })
 
-  const fetchOffers = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = {}
-      if (filters.q) params.search = filters.q
-      if (filters.location) params.location = filters.location
-      if (filters.contract !== 'Tous') params.contract_type = filters.contract
-      params.page = page
-      params.limit = 20
-
-      const [offersData, savedData] = await Promise.allSettled([
-        offersApi.getAll(params),
-        savedApi.getAll(),
-      ])
-
-      if (offersData.status === 'fulfilled') {
-        setOffers(offersData.value.offers || [])
-        setRecommended((offersData.value.offers || []).slice(0, 5))
-        setTotal(offersData.value.total || 0)
-      }
-
-      if (savedData.status === 'fulfilled') {
-        setSavedIds(new Set((savedData.value.saved_offers || []).map((s) => s.id)))
-      }
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setLoading(false)
+  // 2. CRUCIAL : Met à jour les champs si l'utilisateur utilise le chatbot 
+  // alors qu'il se trouve déjà sur la page /explorer
+  useEffect(() => {
+    const loc = searchParams.get('location') || '';
+    const contract = searchParams.get('contract_type') || 'Tous';
+    
+    // Si l'URL contient une localisation ou un contrat, on ouvre automatiquement le volet des filtres pour l'afficher à l'écran
+    if (loc || contract !== 'Tous') {
+      setFiltersOpen(true);
     }
-  }, [filters, page])
+
+    setFilters({
+      q: searchParams.get('q') || '',
+      location: loc,
+      contract: contract,
+      experience: searchParams.get('experience') || 'Tous niveaux',
+      sort: 'recent',
+    });
+  }, [searchParams]);
+
+  const fetchOffers = useCallback(async () => {
+  setLoading(true)
+
+  try {
+    const params = {}
+
+    if (filters.q) params.search = filters.q
+    if (filters.location) params.location = filters.location
+
+    if (filters.contract !== 'Tous') {
+      params.contract_type =
+        CONTRACT_MAP[filters.contract] || filters.contract
+    }
+
+    if (filters.experience !== 'Tous niveaux') {
+      params.experience = filters.experience
+    }
+
+    if (filters.sort) {
+      params.sort = filters.sort
+    }
+
+    params.page = page
+    params.limit = 20
+
+    const [offersData, savedData] = await Promise.allSettled([
+      offersApi.getAll(params),
+      savedApi.getAll(),
+    ])
+
+    if (offersData.status === 'fulfilled') {
+      setOffers(offersData.value.offers || [])
+      setRecommended((offersData.value.offers || []).slice(0, 5))
+      setTotal(offersData.value.total || 0)
+    }
+
+    if (savedData.status === 'fulfilled') {
+      setSavedIds(new Set((savedData.value.saved_offers || []).map((s) => s.id)))
+    }
+
+  } catch (err) {
+    console.error(err)
+  } finally {
+    setLoading(false)
+  }
+}, [filters, page])
 
   useEffect(() => {
     fetchOffers()
