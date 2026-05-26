@@ -1,9 +1,9 @@
 import requests
 import time
-from clean import clean_job
-from save import save_jobs
+from feature.ingest.clean import clean_job
+from feature.ingest.save import save_jobs
 
-API_KEY = "0f2e5f34-0650-4d0c-a684-b9d9e9a4c956"
+API_KEY = "f6af66e7-c97a-4bf2-934b-2c58a124ff0c"
 BASE_URL = "https://epi-api.welovedevs.com/v1"
 PAGE_SIZE = 100
 
@@ -33,6 +33,13 @@ def get_all_jobs():
         page += 1
         time.sleep(1)
     return all_jobs
+
+def run_ingest():
+    jobs = get_all_jobs()
+    print(f"\nTotal offres récupérées : {len(jobs)}")
+    cleaned_jobs = [clean_job(job) for job in jobs]
+    save_jobs(cleaned_jobs)
+    return len(cleaned_jobs)
 
 if __name__ == "__main__":
     jobs = get_all_jobs()

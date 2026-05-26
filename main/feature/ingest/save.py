@@ -1,17 +1,17 @@
 import psycopg2
 import os
-from dotenv import dotenv_values
+# from dotenv import dotenv_values
 
-# Charge le .env du backend
-config = dotenv_values("../../../backend/.env")
+# # Charge le .env du backend
+# config = dotenv_values("../../../backend/.env")
 
 def get_connection():
     return psycopg2.connect(
-        host=config.get("DB_HOST", "localhost"),
-        port=config.get("DB_PORT", 5432),
-        dbname=config.get("DB_NAME", "jobdb"),
-        user=config.get("DB_USER", "postgres"),
-        password=config.get("DB_PASSWORD", "postgres"),
+        host=os.getenv("DB_HOST", "postgres"),
+        port=os.getenv("DB_PORT", 5432),
+        dbname=os.getenv("DB_NAME", "jobdb"),
+        user=os.getenv("DB_USER", "postgres"),
+        password=os.getenv("DB_PASSWORD", "postgres"),
     )
 
 def save_jobs(jobs):

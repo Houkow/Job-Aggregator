@@ -1,5 +1,4 @@
 version: "3.9"
-
 services:
   postgres:
     image: postgres:16
@@ -47,11 +46,11 @@ services:
       - postgres
     command: >
       bash -c "
-      pip install httpx==0.27.2 && 
-      pip install fastapi uvicorn 'openai==1.51.0' psycopg2-binary python-dotenv &&
-      export PYTHONPATH=/app &&
-      uvicorn feature.chatbot.main:app --host 0.0.0.0 --port 5000 --reload
-      "
+        pip install httpx==0.27.2 &&
+        pip install fastapi uvicorn 'openai==1.51.0' psycopg2-binary python-dotenv requests &&
+        export PYTHONPATH=/app &&
+        uvicorn main:app --host 0.0.0.0 --port 5000 --reload
+        "
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -69,9 +68,9 @@ services:
       - backend
     command: >
       bash -c "
-      npm install &&
-      npm run dev
-      "
+        npm install &&
+        npm run dev
+        "
 
 volumes:
   postgres_data:
